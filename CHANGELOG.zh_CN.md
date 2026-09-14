@@ -12,6 +12,8 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 - 桌面转换器：`.apkg` 转 Kindle 卡包，可勾选正面/背面字段（Tkinter 应用、网页
   后备、USB 分享）。运行时只依赖标准库。卡包默认以牌组命名，转换前可填写卡包
   名称；这个名字用于 Kindle 卡包列表和输出文件。
+- AI 免打字配置：在转换器「AI 设置」里粘贴 endpoint/模型/密钥，Kindle 通过 4 位
+  配对码一键导入。密钥依旧不写入卡包 JSON。
 - PyInstaller 产出的未签名预编译应用：macOS universal2 `.app` 和 Windows
   onedir，均在本机汇出（见 packaging/README.zh_CN.md）。
 - 文档：用户指南、卡包格式、foloanki 迁移；全程英文加简体中文。

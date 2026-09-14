@@ -15,6 +15,9 @@ Initial public release.
   (Tkinter app, web page fallback, USB share). Runtime is stdlib-only. Packs
   are named after the deck by default, with an optional pack-name field before
   converting; the name labels the pack on the Kindle and the output files.
+- AI setup without typing: paste endpoint/model/key into the converter's
+  AI settings and pull them onto the Kindle with a 4-digit pairing code.
+  Keys still never touch pack JSON.
 - Unsigned prebuilt apps via PyInstaller: macOS universal2 `.app` and a Windows
   onedir, assembled locally (see packaging/README.md).
 - Docs: user guide, pack format, migration from `foloanki`; English and

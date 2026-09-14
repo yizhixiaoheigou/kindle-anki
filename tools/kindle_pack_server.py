@@ -13,7 +13,7 @@ from pathlib import Path
 import socket
 import subprocess
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 PACK_PORT = 8766
 
@@ -118,6 +118,17 @@ def make_handler(root_holder: dict[str, Path]):
                 }
                 self._send(200, json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                            "application/json; charset=utf-8")
+                return
+            if path == "/ai-settings":
+                query = parse_qs(parsed.query)
+                code = (query.get("code") or [""])[0]
+                expected = str(root_holder.get("ai_code") or "")
+                config = root_holder.get("ai_config")
+                if not expected or not config or code != expected:
+                    self._send(403, b"invalid pairing code", "text/plain")
+                    return
+                body = json.dumps(config, ensure_ascii=False).encode("utf-8")
+                self._send(200, body, "application/json; charset=utf-8")
                 return
             if path.startswith("/packs/"):
                 rest = path[len("/packs/"):]

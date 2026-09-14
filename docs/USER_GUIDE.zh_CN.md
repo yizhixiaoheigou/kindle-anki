@@ -71,6 +71,7 @@ SM-2。进度只留在 Kindle，不同步 AnkiWeb。
 
 可选 AI：**工具 → 更多工具 → Kindle Anki → AI 设置**。在 Kindle 上填 endpoint、模型和 API
 key。转换器不会把密钥写进卡包 JSON。请求会把卡片文本和图片（base64）发给 endpoint；
-明文 `http://` 传输 key 不加密。
+明文 `http://` 传输 key 不加密。不想在 Kindle 上打字：先点转换器的 **AI 设置** 粘贴好
+配置，再在 Kindle 用「从电脑导入 AI 设置」+ 转换器窗口显示的配对码一键导入。
 
 不是官方 Anki。不兼容 AnkiWeb。

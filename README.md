@@ -77,6 +77,9 @@ the Kindle**. Direct HTTPS POST `/v1/chat/completions`. Card images are sent alo
 base64 when a card has them. Thinking tags are
 hidden, not disabled. Pack JSON does not carry keys. Plain `http://` endpoints send the
 key unencrypted — prefer `https://`.
+To skip typing the long key on the Kindle: open the converter's **AI settings**, paste
+your config, then on the Kindle choose **Import AI settings from computer** and enter
+the 4-digit pairing code shown in the converter window.
 
 ## What is not synced
 

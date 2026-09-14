@@ -537,6 +537,33 @@ function Store:list_computer_packs(host, port)
     return payload.packs
 end
 
+function Store:fetch_ai_settings(host, code, port)
+    host = tostring(host or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    code = tostring(code or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    port = tonumber(port) or 8766
+    if host == "" then return nil, "missing computer IP" end
+    if code == "" then return nil, "missing pairing code" end
+    local url = string.format("http://%s:%d/ai-settings?code=%s", host, port, code)
+    local chunks = {}
+    socketutil:set_timeout(8, 15)
+    local ok, response = pcall(function()
+        return socket.skip(1, http.request{
+            url = url,
+            sink = ltn12.sink.table(chunks),
+        })
+    end)
+    socketutil:reset_timeout()
+    if not ok then return nil, tostring(response) end
+    if tonumber(response) ~= 200 then
+        return nil, "computer returned " .. tostring(response)
+    end
+    local decoded_ok, payload = pcall(JSON.decode, table.concat(chunks))
+    if not decoded_ok or type(payload) ~= "table" or type(payload.api_key) ~= "string" then
+        return nil, "computer did not return AI settings"
+    end
+    return payload
+end
+
 function Store:import_from_computer(host, name, port, pack_id)
     host = tostring(host or ""):gsub("^%s+", ""):gsub("%s+$", "")
     name = tostring(name or "")

@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import queue
+import random
 import sys
 import threading
 import traceback
@@ -63,6 +65,8 @@ class ConverterApp(tk.Tk):
         apply_style(self)
         self.apkg_path: Path | None = None
         self.output_dir = Path.home() / "Desktop"
+        self.ai_code = f"{random.randint(0, 9999):04d}"
+        self.ai_config = self._load_ai_config()
         self.inspect = None
         self.pack_httpd = None
         self.pack_holder: dict | None = None
@@ -148,6 +152,8 @@ class ConverterApp(tk.Tk):
         self.again_btn = ttk.Button(actions, text=COPY["again"], command=self.reset_well)
         self.open_btn = ttk.Button(actions, text=COPY["open_folder"], command=self.open_output)
         self.open_btn.pack(side="left", padx=(8, 0))
+        self.ai_btn = ttk.Button(actions, text=COPY["ai_settings"], command=self.open_ai_settings_dialog)
+        self.ai_btn.pack(side="left", padx=(8, 0))
         self.copy_error_btn = ttk.Button(actions, text=COPY["copy_error"], command=self.copy_error)
         self.progress = ttk.Progressbar(left, mode="indeterminate")
         self.status = tk.StringVar(value=COPY["status_idle"])
@@ -158,6 +164,10 @@ class ConverterApp(tk.Tk):
         self.share_tick = tk.Frame(right, width=8, height=8, bg=COLORS["ink"], highlightthickness=0, bd=0)
         self.share_headline = ttk.Label(right, text="")
         self.share_headline.pack(anchor="e")
+        self.ai_code_label = ttk.Label(
+            right, text=COPY["ai_code_label"].format(code=self.ai_code), style="Mute.TLabel"
+        )
+        self.ai_code_label.pack(anchor="e")
         self.share_ip_label = ttk.Label(right, text=COPY["share_ip_label"], style="Mute.TLabel")
         self.share_ip_var = tk.StringVar(value="")
         self.share_ip = ttk.Label(right, textvariable=self.share_ip_var, style="IP.TLabel")
@@ -525,6 +535,8 @@ class ConverterApp(tk.Tk):
         if self.pack_httpd is None:
             try:
                 self.pack_httpd, self.pack_holder = start_pack_server(self.output_dir)
+                self.pack_holder["ai_code"] = self.ai_code
+                self.pack_holder["ai_config"] = self.ai_config or None
                 threading.Thread(target=self.pack_httpd.serve_forever, daemon=True).start()
             except OSError as exc:
                 self.pack_httpd = None
@@ -583,6 +595,62 @@ class ConverterApp(tk.Tk):
         if not guide.is_file():
             guide = repo_root() / "docs" / "USER_GUIDE.md"
         webbrowser.open(guide.as_uri())
+
+    def _ai_config_path(self) -> Path:
+        return Path.home() / ".kindle-anki" / "ai-settings.json"
+
+    def _load_ai_config(self) -> dict:
+        try:
+            data = json.loads(self._ai_config_path().read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def open_ai_settings_dialog(self) -> None:
+        window = tk.Toplevel(self)
+        window.title(COPY["ai_settings"])
+        window.configure(bg=COLORS["paper"])
+        window.transient(self)
+        fields = (
+            ("ai_endpoint", "endpoint"),
+            ("ai_model", "model"),
+            ("ai_key", "api_key"),
+            ("ai_prompt", "system_prompt"),
+        )
+        values = {key: tk.StringVar(value=str(self.ai_config.get(key, ""))) for key, _ in fields}
+        for row, (key, label) in enumerate(fields):
+            ttk.Label(window, text=COPY[key]).grid(row=row, column=0, sticky="w", padx=16, pady=(10, 0))
+            entry = ttk.Entry(window, textvariable=values[key], width=52)
+            if key == "ai_key":
+                entry.configure(show="•")
+            entry.grid(row=row, column=1, sticky="ew", padx=(8, 16), pady=(10, 0))
+        remember = tk.BooleanVar(value=self._ai_config_path().is_file())
+        ttk.Checkbutton(window, text=COPY["ai_remember"], variable=remember).grid(
+            row=len(fields), column=0, columnspan=2, sticky="w", padx=16, pady=(10, 0)
+        )
+        window.columnconfigure(1, weight=1)
+
+        def save() -> None:
+            config = {key: values[key].get().strip() for key, _ in fields}
+            self.ai_config = config
+            if self.pack_holder is not None:
+                self.pack_holder["ai_config"] = config
+                self.pack_holder["ai_code"] = self.ai_code
+            if remember.get():
+                path = self._ai_config_path()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+            else:
+                try:
+                    self._ai_config_path().unlink()
+                except FileNotFoundError:
+                    pass
+            self.ai_code_label.configure(text=COPY["ai_code_label"].format(code=self.ai_code))
+            window.destroy()
+
+        ttk.Button(window, text=COPY["save"], command=save).grid(
+            row=len(fields) + 1, column=0, columnspan=2, sticky="e", padx=16, pady=12
+        )
 
 
 def main() -> int:

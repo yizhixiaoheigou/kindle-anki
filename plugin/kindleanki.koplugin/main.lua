@@ -95,6 +95,10 @@ function KindleAnki:addToMainMenu(menu_items)
                 callback = function() self:import_from_computer() end,
             },
             {
+                text = _("Import AI settings from computer"),
+                callback = function() self:open_ai_share_import() end,
+            },
+            {
                 text = _("Open packs"),
                 callback = function() self:open_library() end,
             },
@@ -104,6 +108,67 @@ function KindleAnki:addToMainMenu(menu_items)
             },
         },
     }
+end
+
+function KindleAnki:open_ai_share_import()
+    close_widget(self.library_dialog)
+    local dialog
+    dialog = MultiInputDialog:new{
+        title = _("Import AI settings from computer"),
+        fields = {
+            { text = self.store:computer_host(), hint = "192.168.x.x", description = _("Computer IP (converter open)") },
+            { text = "", hint = "1234", description = _("Pairing code shown in the converter") },
+        },
+        buttons = {{
+            { text = _("Cancel"), id = "close", callback = function() close_widget(dialog) end },
+            { text = _("Import"), is_enter_default = true, callback = function()
+                local fields = dialog:getFields()
+                local host = fields[1] or ""
+                local code = fields[2] or ""
+                close_widget(dialog)
+                self.store:set_computer_host(host)
+                self:fetch_ai_settings(host, code)
+            end },
+        }},
+    }
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
+end
+
+function KindleAnki:fetch_ai_settings(host, code)
+    UIManager:show(InfoMessage:new{text = _("Fetching AI settings…"), timeout = 2})
+    local payload, err = self.store:fetch_ai_settings(host, code)
+    if not payload then
+        UIManager:show(InfoMessage:new{
+            text = string.format(_("Could not import AI settings: %s"), tostring(err)),
+        })
+        return
+    end
+    local key = tostring(payload.api_key or "")
+    local masked = key ~= "" and (string.rep("•", math.max(#key - 4, 0)) .. key:sub(-4)) or _("(empty)")
+    local summary = string.format(
+        "%s\n%s\n%s",
+        "endpoint: " .. tostring(payload.endpoint or ""),
+        "model: " .. tostring(payload.model or ""),
+        "key: " .. masked
+    )
+    UIManager:show(ConfirmBox:new{
+        text = summary,
+        ok_text = _("Save"),
+        cancel_text = _("Cancel"),
+        ok_callback = function()
+            local saved = self.settings:readSetting("ai", {})
+            if type(saved) ~= "table" then saved = {} end
+            -- Only overwrite fields the computer actually filled in.
+            for field, value in pairs{endpoint = payload.endpoint, model = payload.model,
+                api_key = payload.api_key, system_prompt = payload.system_prompt} do
+                if type(value) == "string" and value ~= "" then saved[field] = value end
+            end
+            self.settings:saveSetting("ai", saved):flush()
+            self.ai_history = {}
+            UIManager:show(InfoMessage:new{text = _("AI settings saved locally")})
+        end,
+    })
 end
 
 function KindleAnki:open_library()

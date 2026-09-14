@@ -11,6 +11,7 @@ dist/
 build/
 .env
 .env.*
+.kindle-anki/
 *.apkg
 *.kindle-anki.json
 *.kindle-anki.zip

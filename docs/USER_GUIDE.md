@@ -80,6 +80,8 @@ Kindle. There is no AnkiWeb sync.
 Optional AI: **Tools → More tools → Kindle Anki → AI settings**. Enter endpoint, model, and
 API key **on the Kindle**. The converter does not embed keys in pack JSON. Requests POST
 the card text and images (base64) to the endpoint; plain `http://` sends the key
-unencrypted.
+unencrypted. To skip typing on the Kindle: click **AI settings** in the converter, paste
+your config, then use **Import AI settings from computer** on the Kindle with the
+4-digit pairing code shown in the converter window.
 
 Not official Anki. Not AnkiWeb-compatible.

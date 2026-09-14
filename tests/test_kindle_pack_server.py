@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +54,35 @@ class KindlePackServerTests(unittest.TestCase):
                 self.assertEqual(body["packs"][1]["id"], 1)
                 with urlopen(f"http://127.0.0.1:{port}/packs/1", timeout=3) as response:
                     self.assertEqual(response.read(), payload)
+            finally:
+                server.shutdown()
+                server.server_close()
+
+    def test_ai_settings_needs_pairing_code(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-ai-") as temp:
+            config = {
+                "endpoint": "https://api.test/v1",
+                "model": "demo-model",
+                "api_key": "sk-secret",
+                "system_prompt": "",
+            }
+            server, holder = start_pack_server(Path(temp), 0)
+            holder["ai_code"] = "1234"
+            holder["ai_config"] = config
+            port = int(server.server_address[1])
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with self.assertRaises(urllib.error.HTTPError) as missing:
+                    urlopen(f"http://127.0.0.1:{port}/ai-settings", timeout=3)
+                self.assertEqual(missing.exception.code, 403)
+                with self.assertRaises(urllib.error.HTTPError) as wrong:
+                    urlopen(f"http://127.0.0.1:{port}/ai-settings?code=0000", timeout=3)
+                self.assertEqual(wrong.exception.code, 403)
+                with urlopen(f"http://127.0.0.1:{port}/ai-settings?code=1234", timeout=3) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(payload["api_key"], "sk-secret")
+                self.assertEqual(payload["endpoint"], "https://api.test/v1")
             finally:
                 server.shutdown()
                 server.server_close()

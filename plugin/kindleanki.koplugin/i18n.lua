@@ -70,6 +70,12 @@ local catalogs = {
         ["Explain clearly"] = "请清晰解释",
         ["Save"] = "保存",
         ["AI settings saved locally"] = "AI 设置已保存到本机",
+        ["Import AI settings from computer"] = "从电脑导入 AI 设置",
+        ["Computer IP (converter open)"] = "电脑 IP（转换器需开着）",
+        ["Pairing code shown in the converter"] = "转换器窗口里显示的配对码",
+        ["Import"] = "导入",
+        ["Fetching AI settings…"] = "正在获取 AI 设置…",
+        ["Could not import AI settings: %s"] = "导入 AI 设置失败：%s",
         ["Configure an API key in the pack or Kindle Anki → AI settings first."] =
             "请先在卡包中配置 API 密钥，或进入 Kindle Anki → AI 设置。",
         ["Ask AI about this card"] = "询问 AI",

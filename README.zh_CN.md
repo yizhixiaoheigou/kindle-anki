@@ -71,7 +71,8 @@ Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。没有正反面互换、�
 **工具 → 更多工具 → Kindle Anki → AI 设置。** endpoint、模型和 API key 只放在 Kindle 上。
 直连 HTTPS POST `/v1/chat/completions`。卡片带图时，图片会以 base64 一并发给 endpoint。
 思考过程会藏起来，但不会关掉模型思考。卡包 JSON 不带密钥。明文 `http://` 的 endpoint 会
-不加密传输 key，建议用 `https://`。
+不加密传输 key，建议用 `https://`。不想在 Kindle 上打长密钥：先在转换器「AI 设置」里
+粘贴好配置，再在 Kindle 选「从电脑导入 AI 设置」，输入转换器窗口显示的配对码即可。
 
 ## 不同步什么
 
