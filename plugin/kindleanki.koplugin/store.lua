@@ -718,7 +718,9 @@ end
 function Store:ai_path(pack, card)
     local base = pack._path and pack._path:match("([^/]+)%.json$") or pack.title
     local pack_name = sanitize_segment(base)
+    if pack_name == "." or pack_name == ".." then pack_name = "pack" end
     local card_name = sanitize_segment(card.id)
+    if card_name == "." or card_name == ".." then card_name = "card" end
     for _, root in ipairs(self:ai_roots()) do
         local path = root .. "/" .. pack_name .. "/" .. card_name .. ".json"
         if lfs.attributes(path, "mode") == "file" then

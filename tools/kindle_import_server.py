@@ -181,7 +181,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("apkg file is required")
             filename, blob = files["apkg"]
             with tempfile.TemporaryDirectory() as tmp:
-                apkg_path = Path(tmp) / (filename or "deck.apkg")
+                apkg_path = Path(tmp) / (Path((filename or "").replace("\\", "/")).name or "deck.apkg")
                 apkg_path.write_bytes(blob)
                 if self.path == "/inspect":
                     report = inspect_apkg(apkg_path)
@@ -226,8 +226,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        except Exception as exc:  # noqa: BLE001 - show to local user
-            body = ("ERROR: %s\n\n%s" % (exc, traceback.format_exc())).encode("utf-8")
+        except Exception as exc:  # noqa: BLE001 - full detail goes to the server console
+            traceback.print_exc()
+            body = ("ERROR: %s\n" % exc).encode("utf-8")
             self.send_response(500)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))

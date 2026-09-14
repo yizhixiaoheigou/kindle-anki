@@ -13,6 +13,8 @@ no ESP-IDF, no `idf.py`, no firmware `validate.sh`, no BSP, and no BLE.
 python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 ```
 
+Use a Python with Tcl/Tk — the UI tests import `tkinter` at module level.
+
 Do not add `tools/anki_importer.py` or `tools/folo_*.py`.
 
 ## Pull requests

@@ -9,7 +9,7 @@
 | Title | Redraw the macOS converter window |
 | Author | TBD |
 | Date | 2026-09-13 |
-| Status | Draft |
+| Status | Implemented (2026-09). Landing deltas: added COPY keys `pack_name` / `pack_name_hint` and helper `initial_pack_name` for the pack-name field. |
 | Product | `dist/Kindle Anki Import.app` (PyInstaller windowed universal2) |
 | Live code | `tools/kindle_import_app.py` (`ConverterApp`) |
 | Audience | Engineer implementing the Tkinter/ttk restyle |

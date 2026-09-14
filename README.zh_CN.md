@@ -48,15 +48,16 @@ onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有�
 
 ## 转换卡包
 
-Mac：`desktop/Kindle-Anki-Import.command`（需要 python3 + Tk），或已有的 onedir
-二进制。Windows：`.bat` + Python。
+Mac：`desktop/Kindle-Anki-Import.command`（需要 python3 + Tk），或
+`dist/Kindle Anki Import.app`。Windows：`desktop/Kindle-Anki-Import.bat`，或
+免安装的 `Kindle-Anki-Import` 文件夹。
 
 选 `.apkg`，填卡包名称（默认用牌组名），勾正面/背面字段，转换。得到
 `名字.kindle-anki.zip`。
 
 ## Wi-Fi 导入
 
-转换窗口不要关。**工具 → Kindle Anki → 从电脑导入**，填窗口里的 IP。局域网
+转换窗口不要关。**工具 → 更多工具 → Kindle Anki → 从电脑导入**，填窗口里的 IP。局域网
 8766 端口**没有密码**，只建议家里 Wi-Fi。USB「导入卡包」是退路。
 
 ## 刷题
@@ -67,9 +68,10 @@ Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。没有正反面互换、�
 
 ## 可选 AI
 
-**工具 → Kindle Anki → AI 设置。** endpoint、模型和 API key 只放在 Kindle 上。
-直连 HTTPS POST `/v1/chat/completions`。思考过程会藏起来，但不会关掉模型思考。
-卡包 JSON 不带密钥。
+**工具 → 更多工具 → Kindle Anki → AI 设置。** endpoint、模型和 API key 只放在 Kindle 上。
+直连 HTTPS POST `/v1/chat/completions`。卡片带图时，图片会以 base64 一并发给 endpoint。
+思考过程会藏起来，但不会关掉模型思考。卡包 JSON 不带密钥。明文 `http://` 的 endpoint 会
+不加密传输 key，建议用 `https://`。
 
 ## 不同步什么
 

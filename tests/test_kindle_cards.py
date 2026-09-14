@@ -15,7 +15,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from kindle_anki_importer import extract_media, import_apkg, inspect_apkg  # noqa: E402
+from kindle_anki_importer import AnkiImportError, extract_media, import_apkg, inspect_apkg  # noqa: E402
 from kindle_bundle import safe_stem, write_kindle_bundle  # noqa: E402
 from kindle_cards import load_package, save_package, validate_package  # noqa: E402
 
@@ -241,6 +241,33 @@ class KindlePackTests(unittest.TestCase):
             _make_apkg(apkg)
             package = import_apkg(apkg, title="   ")
             self.assertEqual(package["title"], "Kindle::Demo")
+
+    def test_import_all_skipped_raises_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-skip-") as temp:
+            apkg = Path(temp) / "broken.apkg"
+            with tempfile.TemporaryDirectory() as tmp:
+                db_path = Path(tmp) / "collection.anki2"
+                connection = sqlite3.connect(db_path)
+                connection.executescript(
+                    """
+                    CREATE TABLE col (id INTEGER PRIMARY KEY, models TEXT NOT NULL, decks TEXT NOT NULL);
+                    CREATE TABLE notes (id INTEGER PRIMARY KEY, mid INTEGER NOT NULL, tags TEXT, flds TEXT);
+                    CREATE TABLE cards (id INTEGER PRIMARY KEY, nid INTEGER NOT NULL, did INTEGER NOT NULL, ord INTEGER NOT NULL);
+                    """
+                )
+                connection.execute(
+                    "INSERT INTO col (id, models, decks) VALUES (1, ?, ?)",
+                    (json.dumps({"9": "broken"}), json.dumps({"1": {"id": 1, "name": "Deck"}})),
+                )
+                connection.execute("INSERT INTO notes (id, mid, tags, flds) VALUES (10, 9, '', 'q\x1fa')")
+                connection.execute("INSERT INTO cards (id, nid, did, ord) VALUES (20, 10, 1, 0)")
+                connection.commit()
+                connection.close()
+                with zipfile.ZipFile(apkg, "w", zipfile.ZIP_DEFLATED) as archive:
+                    archive.write(db_path, "collection.anki2")
+            with self.assertRaises(AnkiImportError) as ctx:
+                import_apkg(apkg)
+            self.assertIn("no importable cards", str(ctx.exception))
 
     def test_inspect_suggests_deck_title(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-title-") as temp:

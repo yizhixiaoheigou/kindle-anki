@@ -32,6 +32,7 @@ mkdir -p "$out"
 plugin_stage="$stage/plugin"
 mkdir -p "$plugin_stage/kindleanki.koplugin"
 cp "$root/plugin/kindleanki.koplugin/"*.lua "$plugin_stage/kindleanki.koplugin/"
+cp "$root/plugin/kindleanki.koplugin/LICENSE" "$plugin_stage/kindleanki.koplugin/"
 plugin_zip="$out/kindleanki.koplugin-v${version}.zip"
 ( cd "$plugin_stage" && zip -r "$plugin_zip" kindleanki.koplugin )
 fail_if_forbidden "$plugin_zip"
@@ -70,7 +71,7 @@ fail_if_forbidden "$conv_zip"
 
 if [[ -d "$root/dist/Kindle Anki Import.app" ]]; then
   mac_zip="$out/Kindle-Anki-Import-macOS-v${version}.zip"
-  ( cd "$root/dist" && zip -r "$mac_zip" "Kindle Anki Import.app" )
+  ( cd "$root/dist" && zip -ry "$mac_zip" "Kindle Anki Import.app" )
   fail_if_forbidden "$mac_zip"
 fi
 

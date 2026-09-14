@@ -14,8 +14,11 @@ tree. On-disk names used `foloanki.koplugin`, `/mnt/us/folo-anki/`, and
 - New packs: `/mnt/us/kindle-anki/packs/` and `*.kindle-anki.json`.
 - Settings: `kindle_anki.lua`. If that file is empty, the plugin copies
   `folo_anki.lua` on first open and leaves the old file.
-- **Dual-read:** existing packs under `/mnt/us/folo-anki/` still list. Progress
-  keys are the full JSON path, so those files are **not** moved.
+- **Dual-read:** existing packs under `/mnt/us/folo-anki/packs/` still list
+  (read-only scan). Progress keys are the full JSON path, so those files are
+  **not** moved. Note: **Manage packs can delete legacy packs too** — deletion
+  is an explicit, confirmed user action, and legacy packs are treated like
+  new ones there.
 - The plugin **never rewrites** an existing pack's `format` field or filename.
   That keeps rollback possible: copy `foloanki.koplugin` back.
 

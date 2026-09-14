@@ -12,8 +12,9 @@
 - 安装目录：`kindleanki.koplugin`。
 - 新卡包：`/mnt/us/kindle-anki/packs/` 和 `*.kindle-anki.json`。
 - 设置：`kindle_anki.lua`。若为空，第一次打开会从 `folo_anki.lua` 拷一份，旧文件保留。
-- **双读：** `/mnt/us/folo-anki/` 里已有卡包仍会列出。进度键是完整 JSON 路径，所以
-  **不会搬文件**。
+- **双读：** `/mnt/us/folo-anki/packs/` 里已有卡包仍会列出（只读扫描）。进度键是
+  完整 JSON 路径，所以**不会搬文件**。注意：**「管理卡包」也能删除旧包**——删除
+  是显式的用户操作且有确认框，旧包与新包在此一视同仁。
 - 插件**不回写**已有卡包的 `format` 或文件名。这样还能回退：把
   `foloanki.koplugin` 拷回去即可。
 

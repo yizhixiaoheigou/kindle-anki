@@ -51,15 +51,16 @@ Details: [docs/USER_GUIDE.md](docs/USER_GUIDE.md). Old paths:
 
 ## Convert a deck
 
-macOS: `desktop/Kindle-Anki-Import.command` (needs python3 + Tk) or the onedir
-binary if present. Windows: `.bat` + Python.
+macOS: `desktop/Kindle-Anki-Import.command` (needs python3 + Tk) or
+`dist/Kindle Anki Import.app` if present. Windows: `desktop/Kindle-Anki-Import.bat`,
+or the `Kindle-Anki-Import` onedir if present.
 
 Pick `.apkg`, name the pack (defaults to the deck name), map front/back
 fields, Convert. Output: `name.kindle-anki.zip`.
 
 ## Import over Wi-Fi
 
-Keep the converter open. **Tools → Kindle Anki → Import from computer** and
+Keep the converter open. **Tools → More tools → Kindle Anki → Import from computer** and
 type the printed IP. The LAN server on port 8766 has **no password** and is
 home-Wi-Fi only. USB **Import pack** is the fallback.
 
@@ -71,9 +72,11 @@ SM-2. No reverse cards, no tag filter, no AnkiWeb.
 
 ## Optional AI
 
-**Tools → Kindle Anki → AI settings.** Endpoint, model, and API key stay **on
-the Kindle**. Direct HTTPS POST `/v1/chat/completions`. Thinking tags are
-hidden, not disabled. Pack JSON does not carry keys.
+**Tools → More tools → Kindle Anki → AI settings.** Endpoint, model, and API key stay **on
+the Kindle**. Direct HTTPS POST `/v1/chat/completions`. Card images are sent along as
+base64 when a card has them. Thinking tags are
+hidden, not disabled. Pack JSON does not carry keys. Plain `http://` endpoints send the
+key unencrypted — prefer `https://`.
 
 ## What is not synced
 

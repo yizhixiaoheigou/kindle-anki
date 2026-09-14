@@ -724,11 +724,15 @@ def import_apkg(
             deck_names[device_deck_id] = _deck_name(decks, source_deck_id) or f"Deck {source_deck_id}"
             deck_cards.setdefault(device_deck_id, []).append(card_id)
 
+        if not cards:
+            raise AnkiImportError(
+                "no importable cards in this .apkg (all notes were skipped or unsupported)"
+            )
         normalized_decks = [
             {"id": deck_id, "name": deck_names[deck_id], "card_ids": deck_cards[deck_id]}
             for deck_id in sorted(deck_names, key=lambda item: (deck_names[item], item))
         ]
-        pack_title = (title or "").strip() or _primary_deck_title(deck_names, deck_cards)
+        pack_title = (title or "").strip() or _primary_deck_title(deck_names, deck_cards) or apkg_path.stem
         return {
             "format": FORMAT_NAME,
             "version": FORMAT_VERSION,

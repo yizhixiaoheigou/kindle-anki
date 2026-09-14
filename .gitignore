@@ -21,3 +21,4 @@ build/
 packaging/Kindle-Anki-Import.iconset/
 .idea/
 .vscode/
+docs/AUDIT*.md

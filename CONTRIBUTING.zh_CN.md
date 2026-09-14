@@ -13,6 +13,8 @@
 python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 ```
 
+请用带 Tcl/Tk 的 Python——UI 测试在顶层 import `tkinter`。
+
 不要加入 `tools/anki_importer.py` 或 `tools/folo_*.py`。
 
 ## Pull request

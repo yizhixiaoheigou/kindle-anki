@@ -18,7 +18,7 @@ official plugin.
    two plugins do not register the same menu.
 4. Eject the Kindle and **fully quit KOReader**, then reopen it. A partial
    restart can keep the old plugin in memory.
-5. Open **Tools → Kindle Anki**.
+5. Open **Tools → More tools → Kindle Anki**.
 
 Packs already under `/mnt/us/folo-anki/` still list. New imports go to
 `/mnt/us/kindle-anki/packs/`. See [MIGRATION.md](MIGRATION.md).
@@ -57,7 +57,7 @@ type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
 Port **8766** has no password. Home Wi-Fi only.
 
 1. Kindle and computer on the same Wi-Fi.
-2. **Tools → Kindle Anki → Import from computer**.
+2. **Tools → More tools → Kindle Anki → Import from computer**.
 3. Type that IP (it is remembered next time).
 4. Pick the pack. The plugin downloads it itself.
 
@@ -65,7 +65,7 @@ If macOS asks to allow Python incoming connections, allow it on a home network.
 
 USB is only a fallback: copy the zip onto the Kindle and use **Import pack**.
 
-To remove a pack: **Tools → Kindle Anki → Manage packs**, or open a pack and
+To remove a pack: **Tools → More tools → Kindle Anki → Manage packs**, or open a pack and
 choose **Delete this pack**. Progress and AI chats for that pack go with it.
 
 Daily new-card count is set on the Kindle the first time you open the pack, not
@@ -77,7 +77,9 @@ Start studying / starred / retry missed / Browse. Again waits 10 minutes.
 Hard / Good / Easy use a day-granularity SM-2 variant. Progress stays on the
 Kindle. There is no AnkiWeb sync.
 
-Optional AI: **Tools → Kindle Anki → AI settings**. Enter endpoint, model, and
-API key **on the Kindle**. The converter does not embed keys in pack JSON.
+Optional AI: **Tools → More tools → Kindle Anki → AI settings**. Enter endpoint, model, and
+API key **on the Kindle**. The converter does not embed keys in pack JSON. Requests POST
+the card text and images (base64) to the endpoint; plain `http://` sends the key
+unencrypted.
 
 Not official Anki. Not AnkiWeb-compatible.
