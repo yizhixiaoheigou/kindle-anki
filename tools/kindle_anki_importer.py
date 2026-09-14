@@ -23,11 +23,13 @@ from typing import Any, Iterable
 
 from kindle_apkg import (
     AnkiImportError,
+    MAX_ZIP_ENTRY_BYTES,
     _card_text,
     _deck_name,
     _extract_field,
     _parse_tags,
     _read_collection,
+    read_checked,
 )
 from kindle_cards import FORMAT_NAME, FORMAT_VERSION, PACK_SUFFIX, KindlePackageError, pack_stem, save_package
 
@@ -314,23 +316,29 @@ def _media_catalog(apkg_path: Path) -> dict[str, dict[str, Any]]:
             archive_names = set(archive.namelist())
             if "media" not in archive_names:
                 return {}
-            raw = json.loads(archive.read("media").decode("utf-8"))
+            raw = json.loads(read_checked(archive, "media").decode("utf-8"))
             if not isinstance(raw, dict):
                 return {}
-            used_names: dict[str, int] = {}
+            raw_items = [
+                (str(archive_name), html.unescape(str(source_name)))
+                for archive_name, source_name in raw.items()
+                if str(archive_name) in archive_names
+            ]
+            # Allocate unique output names against the full name set up front so
+            # a deduplicated name can never collide with a later real name.
+            taken: set[str] = set()
+            final_names: list[str] = []
+            for _, source_name in raw_items:
+                base = _safe_media_name(source_name)
+                candidate, counter = base, 1
+                while candidate in taken:
+                    counter += 1
+                    candidate = f"{Path(base).stem}_{counter}{Path(base).suffix}"
+                taken.add(candidate)
+                final_names.append(candidate)
             catalog: dict[str, dict[str, Any]] = {}
-            for archive_name, source_name in raw.items():
-                archive_name = str(archive_name)
-                source_name = html.unescape(str(source_name))
-                if archive_name not in archive_names:
-                    continue
-                safe_name = _safe_media_name(source_name)
-                used_names[safe_name] = used_names.get(safe_name, 0) + 1
-                if used_names[safe_name] > 1:
-                    stem = Path(safe_name).stem
-                    suffix = Path(safe_name).suffix
-                    safe_name = f"{stem}_{used_names[safe_name]}{suffix}"
-                dimensions = _image_dimensions(archive.read(archive_name))
+            for (archive_name, source_name), safe_name in zip(raw_items, final_names):
+                dimensions = _image_dimensions(read_checked(archive, archive_name))
                 if dimensions is None:
                     dimensions = (600, 400)
                 catalog[source_name] = {
@@ -775,12 +783,17 @@ def extract_media(apkg_path: Path, package: dict[str, Any], target_dir: Path) ->
     by_output_name = {asset["name"]: asset for asset in catalog.values()}
     target_dir.mkdir(parents=True, exist_ok=True)
     extracted = 0
+    total_bytes = 0
     with zipfile.ZipFile(apkg_path) as archive:
         for name in sorted(references):
             asset = by_output_name.get(name)
             if asset is None:
                 continue
-            (target_dir / name).write_bytes(archive.read(asset["archive_name"]))
+            payload = read_checked(archive, asset["archive_name"])
+            total_bytes += len(payload)
+            if total_bytes > MAX_ZIP_ENTRY_BYTES * 4:
+                raise AnkiImportError("extracted media exceeds the total size limit")
+            (target_dir / name).write_bytes(payload)
             extracted += 1
     return extracted
 

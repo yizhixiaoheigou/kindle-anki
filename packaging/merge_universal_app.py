@@ -59,6 +59,7 @@ def merge(arm_app: Path, x86_app: Path, dest_app: Path) -> None:
     x86_files = set(relative_files(x86_app))
     merged = 0
     copied_x86_only = 0
+    single_side_macho: list[str] = []
     for rel in sorted(arm_files | x86_files):
         arm_path = arm_app / rel
         x86_path = x86_app / rel
@@ -67,9 +68,22 @@ def merge(arm_app: Path, x86_app: Path, dest_app: Path) -> None:
             lipo(arm_path, x86_path, dest_path)
             merged += 1
         elif rel in x86_files and rel not in arm_files:
+            if is_macho(x86_path):
+                single_side_macho.append(f"x86-only Mach-O: {rel}")
             dest_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(x86_path, dest_path)
             copied_x86_only += 1
+        elif rel in arm_files and rel not in x86_files and is_macho(arm_path):
+            single_side_macho.append(f"arm64-only Mach-O: {rel}")
+
+    if single_side_macho:
+        for entry in single_side_macho:
+            print(entry, file=sys.stderr)
+        print(
+            "universal merge aborted: a single-architecture Mach-O would ship a thin binary",
+            file=sys.stderr,
+        )
+        return 1
 
     subprocess.run(
         ["codesign", "--force", "--deep", "--sign", "-", str(dest_app)],
@@ -78,6 +92,7 @@ def merge(arm_app: Path, x86_app: Path, dest_app: Path) -> None:
     )
     print(f"universal2 app: {dest_app}")
     print(f"lipo merged {merged} Mach-O files; copied {copied_x86_only} x86-only files")
+    return 0
 
 
 def main() -> int:
@@ -88,8 +103,7 @@ def main() -> int:
     if not arm_app.is_dir() or not x86_app.is_dir():
         print("both inputs must be .app directories", file=sys.stderr)
         return 2
-    merge(arm_app, x86_app, dest_app)
-    return 0
+    return merge(arm_app, x86_app, dest_app)
 
 
 if __name__ == "__main__":

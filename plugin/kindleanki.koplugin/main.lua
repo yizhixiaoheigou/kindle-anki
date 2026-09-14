@@ -935,14 +935,33 @@ function KindleAnki:ai_config()
     if type(saved) ~= "table" then saved = {} end
     local pack_ai = self.pack and self.pack.ai or {}
     if type(pack_ai) ~= "table" then pack_ai = {} end
-    local function choose(local_value, pack_value)
-        return local_value and local_value ~= "" and local_value or pack_value or ""
+    local function present(v) return v ~= nil and v ~= "" end
+    -- Pair credentials with their source: a local API key must never travel to
+    -- a pack-supplied endpoint (or a pack key to a local endpoint) without an
+    -- explicit confirmation at request time.
+    local endpoint, api_key, cross_source = "", "", false
+    if present(saved.endpoint) and present(saved.api_key) then
+        endpoint, api_key = saved.endpoint, saved.api_key
+    elseif present(pack_ai.endpoint) and present(pack_ai.api_key) then
+        endpoint, api_key = pack_ai.endpoint, pack_ai.api_key
+    elseif present(saved.api_key) and present(pack_ai.endpoint) then
+        endpoint, api_key, cross_source = pack_ai.endpoint, saved.api_key, true
+    elseif present(pack_ai.api_key) and present(saved.endpoint) then
+        endpoint, api_key, cross_source = saved.endpoint, pack_ai.api_key, true
+    elseif present(saved.endpoint) then
+        endpoint = saved.endpoint
+    elseif present(pack_ai.endpoint) then
+        endpoint = pack_ai.endpoint
     end
+    local model = present(saved.model) and saved.model or pack_ai.model or ""
+    local system_prompt = present(saved.system_prompt) and saved.system_prompt
+        or pack_ai.system_prompt or ""
     return {
-        endpoint = choose(saved.endpoint, pack_ai.endpoint),
-        model = choose(saved.model, pack_ai.model),
-        api_key = choose(saved.api_key, pack_ai.api_key),
-        system_prompt = choose(saved.system_prompt, pack_ai.system_prompt),
+        endpoint = endpoint,
+        model = model,
+        api_key = api_key,
+        system_prompt = system_prompt,
+        cross_source = cross_source,
     }
 end
 
@@ -954,7 +973,7 @@ function KindleAnki:open_ai_settings()
         fields = {
             { text = config.endpoint, hint = "https://api.example.com/v1", description = _("OpenAI-compatible endpoint") },
             { text = config.model, hint = "model-name", description = _("Model name") },
-            { text = config.api_key, hint = "sk-…", text_type = "password", description = _("API key; local value overrides the pack") },
+            { text = config.api_key, hint = "sk-…", text_type = "password", description = _("API key; local value overrides the pack. Plain http:// sends it unencrypted") },
             { text = config.system_prompt, hint = _("Explain clearly"), description = _("System prompt") },
         },
         buttons = {{
@@ -1065,6 +1084,18 @@ function KindleAnki:open_ai_input(card, revealed)
     local config = self:ai_config()
     if config.api_key == "" then
         UIManager:show(InfoMessage:new{text = _("Configure an API key in the pack or Kindle Anki → AI settings first.")})
+        return
+    end
+    if config.cross_source and not self._ai_cross_consent then
+        UIManager:show(ConfirmBox:new{
+            text = _("This pack defines its own AI endpoint. Your local API key will be sent to that server. Continue?"),
+            ok_text = _("Continue"),
+            cancel_text = _("Cancel"),
+            ok_callback = function()
+                self._ai_cross_consent = true
+                self:open_ai_input(card, revealed)
+            end,
+        })
         return
     end
     -- KOReader ships a Simplified Chinese Pinyin IME. Prefer it for this

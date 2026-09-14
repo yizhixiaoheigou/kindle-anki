@@ -20,6 +20,11 @@ import sys
 import tempfile
 import traceback
 from urllib.parse import parse_qs
+from urllib.parse import unquote, urlparse
+
+from kindle_pack_server import lan_ip
+
+MAX_UPLOAD_BYTES = 512 * 1024 * 1024
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -169,8 +174,22 @@ class Handler(BaseHTTPRequestHandler):
         if self.path not in ("/convert", "/inspect"):
             self.send_error(404)
             return
+        host = (self.headers.get("Host") or "").lower()
+        origin = (self.headers.get("Origin") or "").lower().rstrip("/")
+        allowed = getattr(self.server, "allowed_hosts", set())
+        if host not in allowed or (
+            origin and origin not in {f"http://{h}" for h in allowed}
+        ):
+            body = b"cross-origin request rejected"
+            self.send_response(403)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return
         try:
             length = int(self.headers.get("Content-Length", "0"))
+            if length > MAX_UPLOAD_BYTES:
+                raise ValueError("upload too large")
             raw = self.rfile.read(length)
             content_type = self.headers.get("Content-Type", "")
             if "multipart/form-data" not in content_type:
@@ -278,6 +297,14 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     server = ThreadingHTTPServer((args.host, args.port), Handler)
+    allowed = {"127.0.0.1", "localhost"}
+    try:
+        local_ip = lan_ip()
+        if local_ip:
+            allowed.add(local_ip)
+    except Exception:
+        pass
+    server.allowed_hosts = {f"{entry}:{args.port}" for entry in allowed}
     print(f"Kindle import UI on http://{args.host}:{args.port}")
     server.serve_forever()
 

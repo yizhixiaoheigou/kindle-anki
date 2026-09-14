@@ -141,8 +141,17 @@ def make_handler(root_holder: dict[str, Path]):
                 if zip_path is None or not zip_path.is_file():
                     self._send(404, b"pack not found", "text/plain")
                     return
-                data = zip_path.read_bytes()
-                self._send(200, data, "application/zip")
+                size = zip_path.stat().st_size
+                self.send_response(200)
+                self.send_header("Content-Type", "application/zip")
+                self.send_header("Content-Length", str(size))
+                self.end_headers()
+                with zip_path.open("rb") as handle:
+                    while True:
+                        chunk = handle.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
                 return
             self._send(404, b"not found", "text/plain")
 

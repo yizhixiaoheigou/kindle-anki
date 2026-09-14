@@ -61,7 +61,11 @@ local catalogs = {
         ["AI settings (local values override pack)"] = "AI 设置（本机设置优先于卡包）",
         ["OpenAI-compatible endpoint"] = "OpenAI 兼容接口",
         ["Model name"] = "模型名称",
-        ["API key; local value overrides the pack"] = "API 密钥；本机设置优先于卡包",
+        ["API key; local value overrides the pack. Plain http:// sends it unencrypted"] =
+            "API 密钥；本机设置优先于卡包。明文 http:// 会不加密传输密钥",
+        ["This pack defines its own AI endpoint. Your local API key will be sent to that server. Continue?"] =
+            "此卡包自带 AI 接口。你的本机 API 密钥将被发送到该服务器。是否继续？",
+        ["Continue"] = "继续",
         ["System prompt"] = "系统提示词",
         ["Explain clearly"] = "请清晰解释",
         ["Save"] = "保存",

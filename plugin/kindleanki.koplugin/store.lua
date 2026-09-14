@@ -28,6 +28,8 @@ local PACK_DIR = PACK_ROOTS[1]
 local SETTINGS_FILE = DataStorage:getSettingsDir() .. "/kindle_anki.lua"
 local SETTINGS_FILE_LEGACY = DataStorage:getSettingsDir() .. "/folo_anki.lua"
 local FORMAT_NAMES = { ["kindle-anki"] = true, ["folo-kindle-anki"] = true }
+
+local PROGRESS_FLUSH_EVERY = 10 -- flash-wear guard: batch progress writes
 local DEFAULT_DAILY_NEW = 20
 local MIN_DAILY_NEW = 1
 local MAX_DAILY_NEW = 999
@@ -149,23 +151,70 @@ local function find_pack_json(directory)
     return found
 end
 
+local function zip_entry_names_safe(zip_path)
+    -- Zip-slip guard: reject absolute paths, backslashes, and ".." segments
+    -- before anything is extracted.
+    local quoted_zip = zip_path:gsub('"', '\\"')
+    local handle = io.popen('unzip -Z1 "' .. quoted_zip .. '" 2>/dev/null')
+    if not handle then
+        return true -- listing unavailable; the post-extract symlink scrub still applies
+    end
+    local safe = true
+    for entry in handle:lines() do
+        local clean = entry:gsub("[\r\n]", "")
+        if clean ~= ""
+            and (clean:sub(1, 1) == "/" or clean:find("\\", 1, true) or clean:find("%.%."))
+        then
+            safe = false
+        end
+    end
+    handle:close()
+    return safe
+end
+
+local function remove_symlinks(directory)
+    for child in lfs.dir(directory) do
+        if child ~= "." and child ~= ".." then
+            local path = directory .. "/" .. child
+            if lfs.symlinkattributes and lfs.symlinkattributes(path, "mode") == "link" then
+                os.remove(path)
+            elseif lfs.attributes(path, "mode") == "directory" then
+                remove_symlinks(path)
+            end
+        end
+    end
+end
+
 local function extract_zip(zip_path, dest)
     ensure_directory(dest)
+    if not zip_entry_names_safe(zip_path) then
+        return false
+    end
     local ok_mod, archive = pcall(require, "ffi/archive")
     if ok_mod and type(archive) == "table" then
         if type(archive.unpack) == "function" then
             local ok = pcall(archive.unpack, archive, zip_path, dest)
-            if ok then return true end
+            if ok then
+                pcall(remove_symlinks, dest)
+                return true
+            end
         end
         if type(archive.extract) == "function" then
             local ok = pcall(archive.extract, archive, zip_path, dest)
-            if ok then return true end
+            if ok then
+                pcall(remove_symlinks, dest)
+                return true
+            end
         end
     end
     local quoted_zip = zip_path:gsub('"', '\\"')
     local quoted_dest = dest:gsub('"', '\\"')
     local status = os.execute('unzip -o "' .. quoted_zip .. '" -d "' .. quoted_dest .. '" >/dev/null 2>&1')
-    return status == 0 or status == true
+    if status == 0 or status == true then
+        pcall(remove_symlinks, dest)
+        return true
+    end
+    return false
 end
 
 local function validate_image_refs(card, field)
@@ -317,6 +366,7 @@ function Store:set_daily_new(pack, value)
 end
 
 function Store:list()
+    self:flush_progress()
     local result = {}
     local seen = {}
     for _, directory in ipairs(PACK_ROOTS) do
@@ -541,8 +591,21 @@ function Store:progress_for(pack)
     return self.progress[key]
 end
 
-function Store:save_progress()
+function Store:save_progress(force)
+    -- Flash on Kindle is slow and wears out: batch progress writes and flush
+    -- every PROGRESS_FLUSH_EVERY reviews, or immediately when forced.
+    self._progress_pending = (self._progress_pending or 0) + 1
+    if not force and self._progress_pending < PROGRESS_FLUSH_EVERY then
+        return
+    end
+    self._progress_pending = 0
     self.settings:saveSetting("progress", self.progress):flush()
+end
+
+function Store:flush_progress()
+    if (self._progress_pending or 0) > 0 then
+        self:save_progress(true)
+    end
 end
 
 function Store:card_state(pack, card)

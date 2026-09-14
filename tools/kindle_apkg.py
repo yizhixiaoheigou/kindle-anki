@@ -21,6 +21,17 @@ class AnkiImportError(ValueError):
     """Raised when an .apkg cannot be read by the Kindle importer."""
 
 
+MAX_ZIP_ENTRY_BYTES = 512 * 1024 * 1024
+
+
+def read_checked(archive: zipfile.ZipFile, name: str) -> bytes:
+    """Read a zip entry with a decompressed-size guard against zip bombs."""
+    info = archive.getinfo(name)
+    if info.file_size > MAX_ZIP_ENTRY_BYTES:
+        raise AnkiImportError(f"zip entry {name!r} is too large to read")
+    return archive.read(name)
+
+
 class _TextExtractor(HTMLParser):
     """Turn the safe, text-only part of Anki's HTML into readable card text."""
 
@@ -152,7 +163,7 @@ def _read_collection(apkg_path: Path) -> tuple[sqlite3.Connection, tempfile.Temp
             raise AnkiImportError(".apkg has no collection.anki21 or collection.anki2")
 
         collection_path = Path(temp_dir.name) / collection_name
-        collection_path.write_bytes(archive.read(collection_name))
+        collection_path.write_bytes(read_checked(archive, collection_name))
         archive.close()
         return sqlite3.connect(collection_path), temp_dir
     except Exception:

@@ -2,7 +2,8 @@
 # Assemble plugin and converter zip layouts. Does not upload anything.
 set -euo pipefail
 root="$(cd -- "$(dirname "$0")/.." && pwd)"
-version="${1:-0.1.0}"
+version="${1:-$(sed -n 's/.*"CFBundleShortVersionString": *"\([^"]*\)".*/\1/p' "$root/packaging/kindleanki.spec" | head -n 1)}"
+version="${version:-0.1.0}"
 out="$root/dist/release"
 stage="$(mktemp -d "${TMPDIR:-/tmp}/kindle-anki-release.XXXXXX")"
 trap 'rm -rf "$stage"' EXIT

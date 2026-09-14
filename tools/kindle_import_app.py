@@ -354,7 +354,7 @@ class ConverterApp(tk.Tk):
         self.bind("<Command-O>", lambda e: self.pick_apkg())
         self.bind("<Command-Shift-S>", lambda e: self.pick_output())
         self.bind("<Command-Return>", lambda e: self.convert())
-        self.bind("<Return>", lambda e: self.convert())
+        self.bind("<Return>", lambda e: None if self.focus_get() is getattr(self, "name_entry", None) else self.convert())
         self.bind("<Command-l>", lambda e: self.copy_ip())
         self.bind("<Command-L>", lambda e: self.copy_ip())
         self.bind("<Command-slash>", lambda e: self.open_guide())
