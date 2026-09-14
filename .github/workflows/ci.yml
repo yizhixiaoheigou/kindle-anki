@@ -1,0 +1,26 @@
+name: Host tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Kindle host tests
+        run: |
+          if [ -e tools/anki_importer.py ] || ls tools/folo_*.py >/dev/null 2>&1; then
+            echo "firmware Python helpers must not be in this tree" >&2
+            exit 1
+          fi
+          python3 -m unittest discover -s tests -p "test_kindle_*.py" -v

@@ -1,0 +1,5 @@
+# Build-time only. The converter and server in tools/ run on the stdlib alone.
+pyinstaller==6.22.3
+# Only needed to regenerate packaging/Kindle-Anki-Import.icns / .ico
+# via packaging/make_dock_icon.py.
+pillow>=10.0
