@@ -277,7 +277,9 @@ local function request_sync(request, body)
     request.source = ltn12.source.string(body)
     request.sink = ltn12.sink.table(response_body)
 
-    socketutil:set_timeout(10, 20)
+    -- Chat completions regularly take longer than 20s to generate; a short
+    -- limit here surfaces as "no HTTP response" to the user.
+    socketutil:set_timeout(30, 180)
     local requester = request.url:match("^https://") and https.request or http.request
     local ok, code, headers, status = pcall(function()
         return socket.skip(1, requester(request))
