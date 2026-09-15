@@ -2,6 +2,8 @@
   <a href="README.zh_CN.md">简体中文</a> · <strong>English</strong>
 </p>
 
+[![Host tests](https://github.com/yizhixiaoheigou/kindle-anki/actions/workflows/ci.yml/badge.svg)](https://github.com/yizhixiaoheigou/kindle-anki/actions/workflows/ci.yml)
+
 # Kindle Anki
 
 Kindle Anki is a KOReader plugin that studies Anki `.apkg` decks (short-answer

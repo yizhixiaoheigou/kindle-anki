@@ -2,6 +2,8 @@
   <strong>简体中文</strong> · <a href="README.md">English</a>
 </p>
 
+[![Host tests](https://github.com/yizhixiaoheigou/kindle-anki/actions/workflows/ci.yml/badge.svg)](https://github.com/yizhixiaoheigou/kindle-anki/actions/workflows/ci.yml)
+
 # Kindle Anki
 
 在越狱 Kindle 的 KOReader 里刷 Anki `.apkg`（简答、选择题、图片）。电脑上转换。
