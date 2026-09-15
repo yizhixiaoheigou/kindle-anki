@@ -22,10 +22,12 @@ official KOReader plugin.**
 
 ## Who this is for
 
-- A jailbroken Kindle with KOReader.
-- Anki decks you already have as `.apkg` (choice cards and images included).
+- A jailbroken Kindle running [KOReader](https://github.com/koreader/koreader), the open-source reading system for Kindle.
+- Anki decks you already have as `.apkg` — export them from desktop [Anki](https://apps.ankiweb.net/) (choice cards and images included).
 
 Not for stock Kindle ebooks. Not ESP32 hardware. Not AnkiWeb sync.
+This tool does not include or provide any jailbreaking methods; jailbreaking
+is your own decision and your own risk.
 
 ## Requirements
 

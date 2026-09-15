@@ -20,10 +20,11 @@
 
 ## 给谁用
 
-- 已越狱、装着 KOReader 的 Kindle。
-- 手里已有 `.apkg`（含选择题和图片）。
+- 已越狱、装着 [KOReader](https://github.com/koreader/koreader)（开源的 Kindle 阅读系统）的 Kindle。
+- 手里已有 `.apkg` 卡包——用电脑版 [Anki](https://apps.ankiweb.net/) 的「导出」功能生成（含选择题和图片）。
 
 不是原装 Kindle 电子书。不是 ESP32 硬件。不同步 AnkiWeb。
+本工具不包含、也不提供任何越狱方法；是否越狱由你自行决定并自担风险。
 
 ## 需要什么
 
