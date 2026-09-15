@@ -25,7 +25,6 @@ official KOReader plugin.**
 - A jailbroken Kindle running [KOReader](https://github.com/koreader/koreader), the open-source reading system for Kindle.
 - Anki decks you already have as `.apkg` — export them from desktop [Anki](https://apps.ankiweb.net/) (choice cards and images included).
 
-Not for stock Kindle ebooks. Not ESP32 hardware. Not AnkiWeb sync.
 This tool does not include or provide any jailbreaking methods; jailbreaking
 is your own decision and your own risk.
 
@@ -70,7 +69,7 @@ home-Wi-Fi only. USB **Import pack** is the fallback.
 
 Start studying / starred / retry missed / Browse. Daily new-card count is asked
 on first open of a pack (1–999). Again = 10 minutes. Hard/Good/Easy use day
-SM-2. No reverse cards, no tag filter, no AnkiWeb.
+SM-2.
 
 ## Optional AI
 
@@ -83,15 +82,10 @@ To skip typing the long key on the Kindle: open the converter's **AI settings**,
 your config, then on the Kindle choose **Import AI settings from computer** and enter
 the 4-digit pairing code shown in the converter window.
 
-## What is not synced
-
-No AnkiWeb. No desktop Anki. No hardware progress sync.
-
 ## Versus KAnki / anki.koplugin
 
 This tool **converts existing `.apkg`** (choice + images) on a computer and
-reviews them in KOReader with an independent scheduler. It does not speak
-AnkiConnect and does not sync.
+reviews them in KOReader with an independent scheduler.
 
 ## Development
 

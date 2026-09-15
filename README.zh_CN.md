@@ -23,7 +23,6 @@
 - 已越狱、装着 [KOReader](https://github.com/koreader/koreader)（开源的 Kindle 阅读系统）的 Kindle。
 - 手里已有 `.apkg` 卡包——用电脑版 [Anki](https://apps.ankiweb.net/) 的「导出」功能生成（含选择题和图片）。
 
-不是原装 Kindle 电子书。不是 ESP32 硬件。不同步 AnkiWeb。
 本工具不包含、也不提供任何越狱方法；是否越狱由你自行决定并自担风险。
 
 ## 需要什么
@@ -64,8 +63,7 @@ Mac：`desktop/Kindle-Anki-Import.command`（需要 python3 + Tk），或
 ## 刷题
 
 开始学习 / 收藏 / 错题再练 / 浏览。第一次打开卡包时问每天张数（1–999）。
-Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。没有正反面互换、没有标签筛选、
-不同步 AnkiWeb。
+Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。
 
 ## 可选 AI
 
@@ -75,14 +73,9 @@ Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。没有正反面互换、�
 不加密传输 key，建议用 `https://`。不想在 Kindle 上打长密钥：先在转换器「AI 设置」里
 粘贴好配置，再在 Kindle 选「从电脑导入 AI 设置」，输入转换器窗口显示的配对码即可。
 
-## 不同步什么
-
-不同步 AnkiWeb。不同步桌面 Anki。不同步任何硬件进度。
-
 ## 和 KAnki / anki.koplugin 的差别
 
 本工具在**电脑上转换已有 `.apkg`**（选择题 + 图），在 KOReader 里用独立调度刷。
-不讲 AnkiConnect，也不做同步。
 
 ## 开发
 
