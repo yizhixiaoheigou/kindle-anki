@@ -13,11 +13,20 @@ official KOReader plugin.**
 
 ## Screenshots
 
+The converter on a computer:
+
 <p align="center">
   <img src="screenshots/converter-idle.jpg" width="24%" alt="Converter, idle">
   <img src="screenshots/converter-mapping.jpg" width="24%" alt="Converter, field mapping">
   <img src="screenshots/converter-converting.jpg" width="24%" alt="Converter, converting">
   <img src="screenshots/converter-success.jpg" width="24%" alt="Converter, done and sharing over Wi-Fi">
+</p>
+
+The result on the Kindle:
+
+<p align="center">
+  <img src="screenshots/kindle-study.jpg" width="32%" alt="Studying a poem card on the Kindle">
+  <img src="screenshots/kindle-ai.jpg" width="32%" alt="AI explanation on the Kindle">
 </p>
 
 ## Who this is for

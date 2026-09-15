@@ -11,11 +11,20 @@
 
 ## 截图
 
+电脑上的转换器：
+
 <p align="center">
   <img src="screenshots/converter-idle.jpg" width="24%" alt="转换器，待机">
   <img src="screenshots/converter-mapping.jpg" width="24%" alt="转换器，勾选字段">
   <img src="screenshots/converter-converting.jpg" width="24%" alt="转换器，转换中">
   <img src="screenshots/converter-success.jpg" width="24%" alt="转换完成，可 Wi-Fi 导入">
+</p>
+
+Kindle 上的效果：
+
+<p align="center">
+  <img src="screenshots/kindle-study.jpg" width="32%" alt="在 Kindle 上刷古诗卡">
+  <img src="screenshots/kindle-ai.jpg" width="32%" alt="Kindle 上的 AI 解析">
 </p>
 
 ## 给谁用
