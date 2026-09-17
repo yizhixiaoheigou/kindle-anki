@@ -4,7 +4,7 @@
 
 # 让 AI 帮你装——把这一页发给任意 AI 助手
 
-**用法**：把本页链接发给 AI 助手(ZCode、Claude、ChatGPT 等)，附一句话：
+**用法**：把本页链接发给 AI 助手(ZCode、Claude、ChatGPT、WorkBuddy、豆包办公 等)，附一句话：
 「请严格按照这个文档，帮我把 Kindle Anki 装到我的 Kindle 上」。
 你要做的只有一件事：**用 USB 线把 Kindle 连上电脑**。
 

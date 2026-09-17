@@ -5,9 +5,9 @@
 # Setup with an AI — give this page to any AI assistant
 
 **How to use**: send this page's link to an AI assistant (ZCode, Claude,
-ChatGPT, …) with the message "Follow this document exactly and install Kindle
-Anki on my Kindle." The only thing you do: **connect the Kindle to the
-computer with a USB cable.**
+ChatGPT, WorkBuddy, Doubao, …) with the message "Follow this document exactly
+and install Kindle Anki on my Kindle." The only thing you do: **connect the
+Kindle to the computer with a USB cable.**
 
 ---
 
