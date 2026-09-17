@@ -5,7 +5,8 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 ## 未发布
 
 - 新增「让 AI 帮你装」文档(`docs/SETUP_WITH_AI.zh_CN.md`):把该页发给任意 AI 助手,
-  插上 USB 线即可由 AI 完成插件安装、卡包转换与导入。
+  插上 USB 线即可由 AI 完成插件安装、卡包转换与导入;设备未装 KOReader 时,
+  文档指引 AI 带用户完成 MRPI/KOReader 安装(越狱只指路、不教学)。
 
 ## 0.1.0 — 2026-09-15
 

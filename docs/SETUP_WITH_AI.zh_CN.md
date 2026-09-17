@@ -20,9 +20,28 @@
 2. 找到 Kindle 挂载点:
    - macOS:`/Volumes/Kindle`(用 `ls /Volumes` 确认)
    - Windows:一个新盘符(如 `E:`),可让用户在资源管理器里确认
-3. 确认 `<挂载点>/koreader/` 目录存在(即设备已装 KOReader)。
-   **不存在就停止**：告诉用户先安装 KOReader(https://github.com/koreader/koreader/wiki),
-   并说明本工具不提供越狱或 KOReader 安装服务，装好后回来继续。
+3. 确认 `<挂载点>/koreader/` 目录存在(即设备已装 KOReader)。**存在 → 跳到第 1 步。**
+   不存在 → 按下面的分支处理,不要直接放弃:
+
+   **分支 A:设备还没越狱。**
+   如实告诉用户:KOReader 只能装在越狱后的 Kindle 上;越狱有失去保修等风险,
+   是否越狱由用户自行决定、自担风险。指路(不要代替用户执行,也不要提供越狱步骤):
+
+   - 越狱方法汇总:KOReader 官方 wiki 的 Kindle 安装页
+     (https://github.com/koreader/koreader/wiki) → 前置条件一节,按用户固件版本找对应方法
+   - 越狱完成后回来,从分支 B 继续
+
+   **分支 B:已越狱,但没装 KOReader。你来装:**
+   1. 打开 https://github.com/koreader/koreader/wiki 的 Kindle 安装页,按用户固件版本
+      读最新官方步骤(以下为概要,以官方页为准):
+   2. 装 MRPI(MobileRead Package Installer):把它的 zip 拷到 `<挂载点>/mrpackages/`,
+      在 Kindle 顶部搜索框输入 `;mrpi` 回车触发安装(这一步**由用户在设备上操作**,
+      你把 zip 放好并告诉用户确切要输入的内容)。
+   3. 装 KOReader:从 https://github.com/koreader/koreader/releases 下载
+      `koreader-kindle-*.zip`,同样拷进 `<挂载点>/mrpackages/`,再次搜索框输入 `;mrpi`。
+   4. 装启动器 KUAL(Kindle Unified Application Launcher,同一 wiki 页有链接),
+      之后从 KUAL 菜单启动 KOReader。
+   5. 启动成功后回到本流程第 1 步。
 4. 若 `<挂载点>/koreader/plugins/foloanki.koplugin/` 存在(旧版前身):**不要删除**,
    提醒用户按 https://github.com/yizhixiaoheigou/kindle-anki/blob/main/docs/MIGRATION.zh_CN.md 处理。
 

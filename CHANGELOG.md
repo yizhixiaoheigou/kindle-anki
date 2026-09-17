@@ -6,7 +6,9 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 - Added "Setup with an AI" (`docs/SETUP_WITH_AI.md`): hand the page to any AI
   assistant, plug the Kindle in over USB, and the AI installs the plugin,
-  converts, and imports packs.
+  converts, and imports packs. When KOReader is missing, the guide walks
+  through installing MRPI and KOReader (jailbreak is only pointed to, never
+  taught).
 
 ## 0.1.0 — 2026-09-15
 

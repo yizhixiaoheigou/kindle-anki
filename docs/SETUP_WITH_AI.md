@@ -24,10 +24,34 @@ part). Never touch the system partition; never delete user data.**
 2. Find the Kindle mount point:
    - macOS: `/Volumes/Kindle` (check with `ls /Volumes`)
    - Windows: a new drive letter (e.g. `E:`); ask the user in Explorer if unsure
-3. Verify `<mount>/koreader/` exists (KOReader installed).
-   **If missing, stop**: tell the user to install KOReader first
-   (https://github.com/koreader/koreader/wiki). This tool does not provide
-   jailbreaks or KOReader installation.
+3. Verify `<mount>/koreader/` exists (KOReader installed). **If it does, skip to Step 1.**
+   If not, follow the branches below instead of giving up:
+
+   **Branch A: the device is not jailbroken.**
+   Tell the user plainly: KOReader requires a jailbroken Kindle; jailbreaking
+   carries risks such as losing warranty and is the user's own decision. Point
+   the way (do not perform it, do not provide jailbreak steps yourself):
+
+   - Jailbreak index: the KOReader wiki's Installation on Kindle page
+     (https://github.com/koreader/koreader/wiki) → prerequisites section,
+     matching the device's firmware version
+   - Once jailbroken, come back and continue with Branch B
+
+   **Branch B: jailbroken, but no KOReader. You install it:**
+   1. Open the Kindle install page at https://github.com/koreader/koreader/wiki
+      and follow the latest official steps for the user's firmware (the rest
+      is an outline; the official page wins):
+   2. Install MRPI (MobileRead Package Installer): copy its zip to
+      `<mount>/mrpackages/`, then the user types `;mrpi` in the Kindle's
+      search bar to trigger the install (**the user does this on the device**;
+      you stage the zip and tell them exactly what to type).
+   3. Install KOReader: download `koreader-kindle-*.zip` from
+      https://github.com/koreader/koreader/releases, copy it into
+      `<mount>/mrpackages/`, and have the user type `;mrpi` again.
+   4. Install the KUAL launcher (linked from the same wiki page); KOReader is
+      then started from the KUAL menu.
+   5. Once KOReader starts, continue at Step 1 of this guide.
+
 4. If `<mount>/koreader/plugins/foloanki.koplugin/` exists (the old
    predecessor): **do not delete it**; point the user to
    https://github.com/yizhixiaoheigou/kindle-anki/blob/main/docs/MIGRATION.md.
