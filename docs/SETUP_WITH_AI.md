@@ -7,7 +7,8 @@
 **How to use**: send this page's link to an AI assistant (ZCode, Claude,
 ChatGPT, WorkBuddy, Doubao, …) with the message "Follow this document exactly
 and install Kindle Anki on my Kindle." The only thing you do: **connect the
-Kindle to the computer with a USB cable.**
+Kindle to the computer with a USB cable.** If the AI says it cannot find the
+device, just follow the steps it gives you.
 
 ---
 
@@ -24,8 +25,32 @@ part). Never touch the system partition; never delete user data.**
 2. Find the Kindle mount point:
    - macOS: `/Volumes/Kindle` (check with `ls /Volumes`)
    - Windows: a new drive letter (e.g. `E:`); ask the user in Explorer if unsure
+
+   **No mount point? Don't just tell the user to swap cables — first work out which
+   kind of "not found" this is:**
+   - Check whether the device is enumerated over USB at all:
+     - macOS: `ioreg -p IOUSB -l -w 0 | grep -iE 'USB Product Name|USB Vendor Name'`
+       A hit looks like `RNDIS/Ethernet Gadget`, or a vendor string containing
+       `lab126` (Amazon's Kindle division).
+     - Windows: does it show up in Device Manager?
+   - **Enumerated, but no drive or mount point → the device is in USBNetwork
+     (USB ethernet) mode.** That mode does not expose mass storage, so swapping
+     cables or ports will never help. You must tell the user how to turn it off:
+     1. On the Kindle, quit KOReader → **KUAL → USBNetwork → Toggle USBNetwork**
+        (pick Disable if offered).
+     2. **Unplug the USB cable, wait 3–5 seconds, then plug it back in** — the
+        device is not re-enumerated without a replug; this step cannot be skipped.
+     3. Re-check for the mount point.
+     If the user's KUAL has no USBNetwork entry, ask them to describe or photograph
+     the menus they see and judge from that. **Do not invent commands.**
+   - **Not enumerated at all** → only then is it cable/port/screen-lock: have the
+     user try another cable or port, unlock the screen and replug once.
+
 3. Verify `<mount>/koreader/` exists (KOReader installed). **If it does, skip to Step 1.**
-   If not, follow the branches below instead of giving up:
+   If not, follow the branches below instead of giving up.
+   How to tell the two branches apart: look for jailbreak traces on the device (any
+   one is enough) — `LanguageBreakRan`, `libkh/`, `mkk/`, `rp/`, `patchedUks.sqsh`.
+   Present → Branch B; none at all → Branch A.
 
    **Branch A: the device is not jailbroken.**
    Tell the user plainly: KOReader requires a jailbroken Kindle; jailbreaking
@@ -38,18 +63,40 @@ part). Never touch the system partition; never delete user data.**
    - Once jailbroken, come back and continue with Branch B
 
    **Branch B: jailbroken, but no KOReader. You install it:**
-   1. Open the Kindle install page at https://github.com/koreader/koreader/wiki
-      and follow the latest official steps for the user's firmware (the rest
-      is an outline; the official page wins):
-   2. Install MRPI (MobileRead Package Installer): copy its zip to
-      `<mount>/mrpackages/`, then the user types `;mrpi` in the Kindle's
-      search bar to trigger the install (**the user does this on the device**;
-      you stage the zip and tell them exactly what to type).
-   3. Install KOReader: download `koreader-kindle-*.zip` from
-      https://github.com/koreader/koreader/releases, copy it into
-      `<mount>/mrpackages/`, and have the user type `;mrpi` again.
-   4. Install the KUAL launcher (linked from the same wiki page); KOReader is
-      then started from the KUAL menu.
+   1. Open the Kindle install page at
+      https://github.com/koreader/koreader/wiki (Installation on Kindle devices)
+      and pick the method for the device's **firmware version** (the official page
+      wins):
+      - Firmware ≥ 5.16.3 → KUALA: install
+        https://github.com/kasparcode/kuala/releases first
+      - Firmware < 5.16.3 with KUAL already present → **unzip the package into the
+        USB root**, then start it from KUAL
+      - Jailbroken with WinterBreak (June 2026+), SpringBreak, Sanctuary, Véra or a
+        similar newer method → have the user type `;kpm update`, `;kpm upgrade` and
+        `;kpm install koreader` in the Kindle search bar, one after another
+      - Only much older jailbreaks need Booklet/KOL (that route puts the KOL
+        **bin files** — not the koreader package — into `mrpackages/`)
+      If KUAL / MRPI are already installed, skip them; do not reinstall.
+   2. **Pick the right package — this is the easiest step to get wrong.** The
+      release page has four Kindle assets, chosen by firmware:
+
+      | Asset | Applies to |
+      |---|---|
+      | `koreader-kindlehf-*.zip` | firmware **≥ 5.16.3** |
+      | `koreader-kindlepw2-*.zip` | touch devices on firmware **≤ 5.16.2** |
+      | `koreader-kindle-*.zip` (no suffix) | K4 / Kindle Touch / PW1 |
+      | `koreader-kindle-legacy-*.zip` | keyboard Kindles: K2 / K3 / DX |
+
+      Note that the glob `koreader-kindle-*` **matches all four** — do not just
+      grab whichever one looks newest.
+   3. Download the latest Kindle package from
+      https://github.com/koreader/koreader/releases and install it the way chosen
+      in item 1. If that is "unzip into the root": `<mount>/koreader/` and
+      `<mount>/extensions/koreader/` must end up in the USB root (about 98M /
+      2200+ files — run it in the background).
+   4. Safely eject, then have the user start it via
+      **KUAL → KOReader → Start KOReader** (the first run walks through setup).
+      If the user has no KUAL yet, install it from the link on the same wiki page.
    5. Once KOReader starts, continue at Step 1 of this guide.
 
 4. If `<mount>/koreader/plugins/foloanki.koplugin/` exists (the old
@@ -70,7 +117,8 @@ From https://github.com/yizhixiaoheigou/kindle-anki/releases/latest:
 2. Copy it to `<mount>/koreader/plugins/kindleanki.koplugin/`, replacing any
    older copy as a whole.
 3. Verify `<mount>/koreader/plugins/kindleanki.koplugin/_meta.lua` exists and
-   contains `version`.
+   contains `version`. (macOS leaves a crowd of `._*` AppleDouble files on FAT
+   volumes — that is noise, ignore it when checking.)
 
 ### Step 3: convert a deck (when the user provides an `.apkg`)
 
@@ -81,9 +129,11 @@ python3 tools/kindle_anki_importer.py "/path/to/deck.apkg" -o "/path/to/out/name
 ```
 
 Use `py -3` on Windows. Output: `name.kindle-anki.json` +
-`name.kindle-anki.media/` + `name.kindle-anki.zip`. If the report shows many
-`Skipped` cards, the deck may need field mapping — the GUI converter is
-better for that (see Step 5 note).
+`name.kindle-anki.media/` + `name.kindle-anki.zip`. If the deck has no images or
+audio, **no** `.media/` directory is produced — that is normal, do not go looking
+for it on the device. If the report shows many `Skipped` cards the deck may need
+field mapping; the GUI converter is better for that (the packaged
+`Kindle-Anki-Import.command` / `.bat`, or the drop-in converter from the release).
 
 ### Step 4: put the pack on the device
 
@@ -100,7 +150,10 @@ the device and let the user pick it via the plugin's "Import pack" menu.
 ### Step 5: finish (tell the user each item)
 
 1. Safely eject the Kindle and unplug.
-2. On the Kindle, **fully quit KOReader and reopen it** so the plugin loads.
+2. So the plugin loads:
+   - KOReader was already installed on the device → **fully quit and reopen it**.
+   - KOReader was just installed by this run (Branch B) → start it via
+     **KUAL → KOReader → Start KOReader**.
 3. Menu: **Tools → More tools → Kindle Anki**.
 4. The first open of a pack asks for the daily new-card count (1–999, default 20).
 5. Optional AI: open the converter on the computer (double-click
@@ -114,7 +167,7 @@ the device and let the user pick it via the plugin's "Import pack" menu.
 
 | Symptom | Fix |
 |---|---|
-| Kindle mount point not found | different cable/port; replug while unlocked; Windows Disk Management |
+| Kindle mount point not found | work through Step 0 first: is the device enumerated over USB at all? **Enumerated but no drive = USBNetwork mode** — have the user turn usbnet off, then **replug once**; only after ruling that out try another cable/port, or replug with the screen unlocked |
 | no `koreader/` directory | KOReader not installed — back to Step 0 |
 | computer has no Python | install from https://www.python.org/downloads/ (with Tcl/Tk), or use the packaged converter from the release |
 | macOS app won't open | unsigned: right-click → Open |
@@ -123,9 +176,14 @@ the device and let the user pick it via the plugin's "Import pack" menu.
 
 ### Red lines (never violate)
 
-- Never delete or rewrite any existing data on the user's Kindle (especially
-  the legacy `/mnt/us/folo-anki/` directory).
+- Never rewrite or delete the user's **data files** (packs, study progress, the
+  legacy `/mnt/us/folo-anki/` directory, …). Overwriting the plugin folder itself
+  when upgrading, as Step 2 says, is allowed.
 - Never write API keys into pack JSON; keys belong only to KOReader plugin
   settings.
 - Never perform or guide jailbreaking.
 - Do not touch anything else on the device after finishing.
+- **While KOReader is running, do not have the user plug the device into a
+  computer to switch it into mass-storage mode** — that is officially unsupported
+  and can take down KOReader, or the Kindle itself. Charge with a charger, or quit
+  KOReader first.
