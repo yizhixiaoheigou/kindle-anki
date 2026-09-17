@@ -22,11 +22,15 @@
    - Windows:一个新盘符(如 `E:`),可让用户在资源管理器里确认
 
    **找不到挂载点?别急着让用户换线,先分清是哪种"找不到":**
-   - 先确认设备有没有被 USB 枚举到:
-     - macOS:`ioreg -p IOUSB -l -w 0 | grep -iE 'USB Product Name|USB Vendor Name'`
-       命中特征:`RNDIS/Ethernet Gadget`,或厂商串里含 `lab126`(亚马逊 Kindle 部门)。
-     - Windows:设备管理器里是否出现该设备。
-   - **枚举到了、但就是没有盘符 → 设备处于 USBNetwork(USB 网卡)模式。**
+   - 用系统工具看这个 Kindle 在 USB 上以什么身份出现:
+     - macOS:`ioreg -p IOUSB -l -w 0 | grep -E '"USB Product Name"'`
+       - 看到 **`RNDIS/Ethernet Gadget`** → 第 1 种
+       - 看到 **`Internal Storage`** → 第 2 种
+     - Windows:设备管理器里找它;`RNDIS` / `NDIS` / 网络适配器类 = 第 1 种,
+       磁盘驱动器 / 便携设备类 = 第 2 种。
+     (厂商串里含 `lab126` 或厂商号 `0x1949` 只能说明"这是台亚马逊设备",
+     **不能**用来区分这两种模式。)
+   - **第 1 种:产品名是 `RNDIS/Ethernet Gadget`(USB 网卡模式)。**
      该模式不暴露 U 盘,换线换口都没用。此时你必须主动告诉用户怎么关掉它:
      1. 在 Kindle 上退出 KOReader → **KUAL → USBNetwork → Toggle USBNetwork**
         (有 Disable 就选 Disable)。
@@ -34,7 +38,11 @@
      3. 插回后重新确认挂载点出现。
      若用户的 KUAL 里没有 USBNetwork 这一项,让他在设备上描述或拍下看到的菜单再判断,
      **不要凭空猜命令**。
-   - **完全没枚举到** → 才轮到线材/端口/锁屏:让用户换线换口、解锁屏幕后拔插一次。
+   - **第 2 种:产品名是 `Internal Storage`(大容量存储模式)却没有盘符。**
+     设备本身没问题,只是卷没挂上 —— 最常见的原因是上一次"安全弹出"之后线没拔。
+     **不要**让用户去关 usbnet(这个模式下它根本没启用)。让他**拔线、等 3~5 秒、再插回**,
+     盘符就应该出现;如果插回后仍然没有,再怀疑文件系统损坏。
+   - **完全看不到这个设备** → 才轮到线材/端口/锁屏:让用户换线换口、解锁屏幕后拔插一次。
 
 3. 确认 `<挂载点>/koreader/` 目录存在(即设备已装 KOReader)。**存在 → 跳到第 1 步。**
    不存在 → 按下面的分支处理,不要直接放弃:

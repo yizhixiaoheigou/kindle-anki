@@ -28,14 +28,17 @@ part). Never touch the system partition; never delete user data.**
 
    **No mount point? Don't just tell the user to swap cables — first work out which
    kind of "not found" this is:**
-   - Check whether the device is enumerated over USB at all:
-     - macOS: `ioreg -p IOUSB -l -w 0 | grep -iE 'USB Product Name|USB Vendor Name'`
-       A hit looks like `RNDIS/Ethernet Gadget`, or a vendor string containing
-       `lab126` (Amazon's Kindle division).
-     - Windows: does it show up in Device Manager?
-   - **Enumerated, but no drive or mount point → the device is in USBNetwork
-     (USB ethernet) mode.** That mode does not expose mass storage, so swapping
-     cables or ports will never help. You must tell the user how to turn it off:
+   - Use the OS tools to see what identity the Kindle shows up as over USB:
+     - macOS: `ioreg -p IOUSB -l -w 0 | grep -E '"USB Product Name"'`
+       - **`RNDIS/Ethernet Gadget`** → case 1 below
+       - **`Internal Storage`** → case 2 below
+     - Windows: find it in Device Manager; an `RNDIS` / `NDIS` / network-adapter
+       entry means case 1, a disk-drive / portable-device entry means case 2.
+     (A vendor string containing `lab126`, or vendor ID `0x1949`, only tells you it
+     is an Amazon device — it does **not** distinguish the two modes.)
+   - **Case 1: the product name is `RNDIS/Ethernet Gadget` (USB ethernet mode).**
+     That mode does not expose mass storage, so swapping cables or ports will never
+     help. You must tell the user how to turn it off:
      1. On the Kindle, quit KOReader → **KUAL → USBNetwork → Toggle USBNetwork**
         (pick Disable if offered).
      2. **Unplug the USB cable, wait 3–5 seconds, then plug it back in** — the
@@ -43,8 +46,14 @@ part). Never touch the system partition; never delete user data.**
      3. Re-check for the mount point.
      If the user's KUAL has no USBNetwork entry, ask them to describe or photograph
      the menus they see and judge from that. **Do not invent commands.**
-   - **Not enumerated at all** → only then is it cable/port/screen-lock: have the
-     user try another cable or port, unlock the screen and replug once.
+   - **Case 2: the product name is `Internal Storage` (mass-storage mode) but there
+     is still no drive.** The device is fine; the volume just is not attached —
+     most often because it was "safely ejected" without the cable being unplugged.
+     Do **not** send the user to toggle usbnet (it is not active in this mode). Have
+     them **unplug, wait 3–5 seconds, and plug back in**; the drive should appear.
+     Only if it still does not, suspect a damaged filesystem.
+   - **The device is not visible at all** → only then is it cable/port/screen-lock:
+     have the user try another cable or port, unlock the screen and replug once.
 
 3. Verify `<mount>/koreader/` exists (KOReader installed). **If it does, skip to Step 1.**
    If not, follow the branches below instead of giving up.
