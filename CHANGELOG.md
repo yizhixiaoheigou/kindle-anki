@@ -2,7 +2,13 @@
 
 Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
-## 0.1.0 — unreleased
+## Unreleased
+
+- Added "Setup with an AI" (`docs/SETUP_WITH_AI.md`): hand the page to any AI
+  assistant, plug the Kindle in over USB, and the AI installs the plugin,
+  converts, and imports packs.
+
+## 0.1.0 — 2026-09-15
 
 Initial public release.
 

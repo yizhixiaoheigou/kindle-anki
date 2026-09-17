@@ -53,6 +53,10 @@ one, install Python 3 with Tcl/Tk from python.org and use
 
 ## Install the plugin
 
+> Confused by tutorials? Give [SETUP_WITH_AI.md](docs/SETUP_WITH_AI.md) to any
+> AI assistant, plug the Kindle into the computer over USB, and let it do the
+> rest.
+
 Unzip so `kindleanki.koplugin/` is a folder. Copy it to
 `/mnt/us/koreader/plugins/kindleanki.koplugin/`. If upgrading from
 `foloanki.koplugin`, delete the old folder. Eject. **Fully quit KOReader and

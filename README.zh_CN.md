@@ -50,6 +50,9 @@ onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有�
 
 ## 安装插件
 
+> 看不懂教程?把 [SETUP_WITH_AI.zh_CN.md](docs/SETUP_WITH_AI.zh_CN.md) 发给任意 AI 助手,
+> 再用 USB 线把 Kindle 连上电脑,它带你装完。
+
 解压后应有文件夹 `kindleanki.koplugin/`。拷到
 `/mnt/us/koreader/plugins/kindleanki.koplugin/`。若从 `foloanki.koplugin` 升级，
 删掉旧文件夹。弹出 Kindle。**完全退出 KOReader 再打开。**
