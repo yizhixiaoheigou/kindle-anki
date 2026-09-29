@@ -4,6 +4,17 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Added **Import via browser**: the plugin now opens a small LAN page
+  (`http://<kindle-ip>:8767`) where a phone or computer browser converts an
+  `.apkg` entirely in the browser and uploads the finished pack straight onto
+  the Kindle. No desktop converter or USB needed; the Kindle still never
+  unpacks Anki files — only finished kindle-anki zips are accepted. The
+  browser converter is a byte-compatible port of the Python pipeline
+  (`plugin/.../web/`), pinned by Node↔Python conformance tests. The page can
+  also push AI settings (endpoint/model/API key) onto the Kindle with the
+  4-digit pairing code shown in the same dialog — write-only, never readable
+  back through the page, JSON-only, and locked after 5 wrong codes. The page also lists existing packs and can delete
+  them (progress and AI chats included) through the plugin's own guards.
 - Added "Setup with an AI" (`docs/SETUP_WITH_AI.md`): hand the page to any AI
   assistant, plug the Kindle in over USB, and the AI installs the plugin,
   converts, and imports packs. When KOReader is missing, the guide walks

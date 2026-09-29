@@ -4,6 +4,14 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- 新增「手机/电脑导入」:插件在局域网开一个小网页(`http://<Kindle IP>:8767`),
+  手机或电脑浏览器在这个页面里**全程在浏览器内完成 `.apkg` 转换**,并把转换好的
+  卡包直接上传进 Kindle。不再需要桌面转换器或 USB;Kindle 依旧从不解包 Anki
+  文件——只接收转换完成的 kindle-anki zip。浏览器转换器是 Python 管线的字节级
+  兼容移植(`plugin/.../web/`),由 Node↔Python 一致性测试锁定。网页还能用同一弹窗
+  里显示的 4 位配对码把 AI 设置(接口/模型/API key)直接推送到 Kindle——只可写入,
+  永远无法从网页读回,只接受 JSON 提交,输错 5 次即锁定。网页还会列出已有的卡包并可删除(连带学习进度与 AI 对话),
+  删除走插件自身的安全护栏。
 - 新增「让 AI 帮你装」文档(`docs/SETUP_WITH_AI.zh_CN.md`):把该页发给任意 AI 助手,
   插上 USB 线即可由 AI 完成插件安装、卡包转换与导入;设备未装 KOReader 时,
   文档指引 AI 带用户完成 MRPI/KOReader 安装(越狱只指路、不教学)。

@@ -8,10 +8,11 @@ Standalone KOReader plugin plus desktop converter. Not ESP32 firmware. Not AnkiW
 
 ## Product boundary
 
-- Computer converts `.apkg`. The plugin never unpacks Anki files.
+- A browser (phone/computer) or the desktop computer converts `.apkg`. The plugin never unpacks Anki files; it only accepts finished packs.
 - Progress stays on the Kindle. Do not sync to AnkiWeb, desktop Anki, or hardware.
 - Never write API keys into pack JSON. Keys live in KOReader plugin settings.
-- LAN pack server (`:8766`) is unauthenticated home-Wi-Fi only.
+- LAN pack server (`:8766`) and the Kindle-side browser-import page
+  (`:8767`) are unauthenticated home-Wi-Fi only.
 - Dual-read legacy `/mnt/us/folo-anki/` and `foloanki.koplugin`. Do not auto-delete them. Do not rewrite existing pack JSON.
 
 ## Validation

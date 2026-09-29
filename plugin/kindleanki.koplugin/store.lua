@@ -502,6 +502,10 @@ function Store:delete_pack(pack)
     return true
 end
 
+function Store:pack_dir()
+    return PACK_DIR
+end
+
 function Store:computer_host()
     local host = self.settings:readSetting("computer_host", "")
     if type(host) == "string" then return host end

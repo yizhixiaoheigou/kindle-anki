@@ -65,7 +65,18 @@ reopen.**
 Details: [docs/USER_GUIDE.md](docs/USER_GUIDE.md). Old paths:
 [docs/MIGRATION.md](docs/MIGRATION.md).
 
-## Convert a deck
+## Convert and import from a phone/computer browser (no tools needed)
+
+**Tools → More tools → Kindle Anki → Import via browser**, then open the shown
+address (`http://<kindle-ip>:8767`) on any phone or computer on the same Wi-Fi.
+Pick the `.apkg` in that page — the conversion runs **inside the browser**, and
+the finished pack lands on the Kindle directly. Nothing is installed on the
+phone, no computer converter is needed, and the Kindle itself never unpacks
+Anki files. The page can also hand you the `.zip` as a fallback download, and
+it manages what is already on the device: **Delete** removes a pack together
+with its study progress and AI chats.
+
+## Convert a deck on a computer (alternative)
 
 macOS: `desktop/Kindle-Anki-Import.command` (needs python3 + Tk) or
 `dist/Kindle Anki Import.app` if present. Windows: `desktop/Kindle-Anki-Import.bat`,
@@ -95,7 +106,8 @@ hidden, not disabled. Pack JSON does not carry keys. Plain `http://` endpoints s
 key unencrypted — prefer `https://`.
 To skip typing the long key on the Kindle: open the converter's **AI settings**, paste
 your config, then on the Kindle choose **Import AI settings from computer** and enter
-the 4-digit pairing code shown in the converter window.
+the 4-digit pairing code shown in the converter window — or paste the same fields into
+the browser import page with the pairing code shown in the Kindle dialog.
 
 ## Versus KAnki / anki.koplugin
 

@@ -15,6 +15,18 @@ local catalogs = {
         ["Choose a Kindle Anki pack"] = "选择 Kindle Anki 卡包",
         ["Import pack"] = "导入卡包",
         ["Import from computer"] = "从电脑导入",
+        ["Import via browser"] = "手机/电脑导入",
+        ["Open this address in your phone or computer browser (same Wi-Fi):"] =
+            "在手机或电脑浏览器（同一 Wi-Fi）里打开这个地址：",
+        ["Pick the .apkg in the page, convert it there, and it lands on this Kindle."] =
+            "在网页里选择 .apkg 文件，转换会直接在浏览器完成，卡包随即导入这台 Kindle。",
+        ["Import page closed."] = "导入网页已关闭。",
+        ["Could not open the import page: %s"] = "无法打开导入网页：%s",
+        ["Pairing code (for AI settings): %s"] = "配对码（网页里保存 AI 设置用）：%s",
+        ["The page keeps working until you tap Stop here or quit KOReader. You can leave this screen and come back later."] =
+            "导入页会一直开着：你可以退出这个界面，手机随时能连；用完回到这里点「立即停止」，或退出 KOReader 自动关闭。",
+        ["Keep it running"] = "保持开启（用完再停）",
+        ["Stop now"] = "立即停止",
         ["Open packs"] = "打开卡包",
         ["Manage packs"] = "管理卡包",
         ["Delete this pack"] = "删除此卡包",

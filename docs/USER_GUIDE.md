@@ -50,7 +50,43 @@ You get three things with the same name:
 
 The converter never uploads your deck. It does not write API keys into the pack.
 
-## 3. Import on the Kindle (Wi-Fi, no USB)
+## 3. Import on the Kindle
+
+### Easiest: convert in a phone/computer browser (no converter needed)
+
+1. Kindle and phone/computer on the same Wi-Fi.
+2. **Tools → More tools → Kindle Anki → Import via browser**. A dialog shows
+   the address, for example `http://192.168.1.20:8767/`.
+3. Open that address in the phone/computer browser.
+4. Pick the Anki `.apkg` in the page (export it with *Support older Anki
+   versions* checked). The page lists every note type with **all** its
+   fields; each field shows an "例如 …" snippet of its real content. Tick
+   which fields form the card front and which the back — nothing is
+   pre-selected, and Convert refuses until every note type has at least one
+   front and one back field.
+5. Click **转 换** (Convert). The conversion runs inside the browser; card
+   content stays on your device.
+6. Click **导入到 Kindle** (Import to Kindle). The Kindle shows "Imported …"
+   and the pack is ready. **下载 .zip** gives you the same pack as a file.
+
+The same page lists what is already on the Kindle. **删除** (Delete) removes
+a pack together with its study progress and AI chats — the same as the
+plugin's own Manage packs, straight from the browser.
+
+The page also has an **AI settings** box: paste your endpoint, model, and
+API key plus the 4-digit pairing code shown in the same Kindle dialog, and
+they are saved straight into the Kindle's plugin settings — no typing the
+long key on the Kindle keyboard. The page can write the key but can never
+read it back. After 5 wrong pairing codes the page stops accepting AI
+settings; tap **Stop now** on the Kindle and open the page again for a new
+code.
+
+Leave the dialog's **Stop** for when you are done; the small server on port
+8767 closes with it. It has no password — home Wi-Fi only, like the computer
+converter's port 8766. The Kindle never unpacks Anki files itself; it only
+receives the finished pack.
+
+### From the computer converter (Wi-Fi, no USB)
 
 Keep the converter window open. The dock on the right shows the LAN IP in large
 type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
@@ -82,6 +118,8 @@ API key **on the Kindle**. The converter does not embed keys in pack JSON. Reque
 the card text and images (base64) to the endpoint; plain `http://` sends the key
 unencrypted. To skip typing on the Kindle: click **AI settings** in the converter, paste
 your config, then use **Import AI settings from computer** on the Kindle with the
-4-digit pairing code shown in the converter window.
+4-digit pairing code shown in the converter window — or paste the same fields
+into the **browser import page** (section 3) together with the pairing code
+shown in the Kindle dialog.
 
 Not official Anki. Not AnkiWeb-compatible.

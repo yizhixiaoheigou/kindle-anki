@@ -8,6 +8,7 @@ local LuaSettings = require("luasettings")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
 local Store = require("store")
 local Screen = require("device").screen
+local WebServer = require("webserver")
 local TextViewer = require("ui/widget/textviewer")
 local Trapper = require("ui/trapper")
 local UIManager = require("ui/uimanager")
@@ -83,6 +84,12 @@ function KindleAnki:init()
     I18N.set_locale(self.settings:readSetting("locale", "zh_CN"))
     self.store = Store:new(self.settings)
     self.ui.menu:registerToMainMenu(self)
+    -- KOReader builds a fresh plugin instance for the file browser and for
+    -- every opened book, but the import page outlives them: hand a running
+    -- server to the newest instance so its callbacks and settings are live.
+    if WebServer.active and WebServer.active:is_running() then
+        self:attach_webserver(WebServer.active)
+    end
 end
 
 function KindleAnki:addToMainMenu(menu_items)
@@ -90,6 +97,10 @@ function KindleAnki:addToMainMenu(menu_items)
         text = _("Kindle Anki"),
         sorting_hint = "more_tools",
         sub_item_table = {
+            {
+                text = _("Import via browser"),
+                callback = function() self:open_browser_import() end,
+            },
             {
                 text = _("Import from computer"),
                 callback = function() self:import_from_computer() end,
@@ -174,6 +185,14 @@ end
 function KindleAnki:open_library()
     self.packs = self.store:list()
     local buttons = {
+        {{
+            text = _("Import via browser"),
+            align = "left",
+            callback = function()
+                close_widget(self.library_dialog)
+                self:open_browser_import()
+            end,
+        }},
         {{
             text = _("Import from computer"),
             align = "left",
@@ -295,6 +314,149 @@ function KindleAnki:confirm_delete_pack(pack, after)
             if after then after() end
         end,
     })
+end
+
+local function generate_pairing_code()
+    -- Four digits are only safe because the server locks after a few wrong
+    -- tries (WebServer.MAX_AI_ATTEMPTS); the code itself must not be
+    -- predictable, so prefer the kernel RNG over a clock seed.
+    local urandom = io.open("/dev/urandom", "rb")
+    if urandom then
+        local bytes = urandom:read(4)
+        urandom:close()
+        if bytes and #bytes == 4 then
+            local b1, b2, b3, b4 = bytes:byte(1, 4)
+            return string.format("%04d", (((b1 * 256 + b2) * 256 + b3) * 256 + b4) % 10000)
+        end
+    end
+    math.randomseed(os.time() * 1000 + math.floor((os.clock() % 1) * 1000))
+    return string.format("%04d", math.random(0, 9999))
+end
+
+function KindleAnki:attach_webserver(server)
+    server.store = self.store
+    server.on_result = function(result) self:on_web_import_result(result) end
+    server.on_ai_settings = function(payload) return self:on_web_ai_settings(payload) end
+    server.on_delete_pack = function(pack) return self:on_web_delete_pack(pack) end
+end
+
+function KindleAnki:open_browser_import()
+    close_widget(self.library_dialog)
+    if WebServer.active and WebServer.active:is_running() then
+        self:attach_webserver(WebServer.active)
+        self:show_browser_import_dialog()
+        return
+    end
+    local function work()
+        local server = WebServer:new{
+            store = self.store,
+            port = tonumber(self.settings:readSetting("web_port", WebServer.DEFAULT_PORT)) or WebServer.DEFAULT_PORT,
+            upload_path = self.store:pack_dir() .. "/.upload.kindle-anki.zip",
+            ai_code = generate_pairing_code(),
+        }
+        self:attach_webserver(server)
+        local ok, err = server:start()
+        if not ok then
+            UIManager:show(InfoMessage:new{
+                text = string.format(_("Could not open the import page: %s"), tostring(err)),
+            })
+            return
+        end
+        WebServer.active = server
+        self:show_browser_import_dialog()
+    end
+    local ok, NetworkMgr = pcall(require, "ui/network/manager")
+    if ok and NetworkMgr and NetworkMgr.runWhenOnline then
+        NetworkMgr:runWhenOnline(work)
+    else
+        work()
+    end
+end
+
+function KindleAnki:show_browser_import_dialog()
+    local url = WebServer.active:url()
+    local code = WebServer.active.ai_code or ""
+    UIManager:show(ConfirmBox:new{
+        title = _("Import via browser"),
+        text = _("Open this address in your phone or computer browser (same Wi-Fi):")
+            .. "\n\n" .. url .. "\n\n"
+            .. _("Pick the .apkg in the page, convert it there, and it lands on this Kindle.")
+            .. "\n\n"
+            .. string.format(_("Pairing code (for AI settings): %s"), code)
+            .. "\n\n"
+            .. _("The page keeps working until you tap Stop here or quit KOReader. You can leave this screen and come back later."),
+        ok_text = _("Keep it running"),
+        cancel_text = _("Stop now"),
+        ok_callback = function() end,
+        cancel_callback = function()
+            if WebServer.active then
+                WebServer.active:stop()
+                WebServer.active = nil
+            end
+            UIManager:show(InfoMessage:new{text = _("Import page closed.")})
+        end,
+    })
+end
+
+function KindleAnki:on_web_ai_settings(payload)
+    if type(payload) ~= "table" then
+        return { ok = false, error = "missing settings" }
+    end
+    local incoming = {}
+    for _, field in ipairs({ "endpoint", "model", "api_key", "system_prompt" }) do
+        local value = payload[field]
+        if type(value) == "string" and value ~= "" then incoming[field] = value end
+    end
+    if incoming.endpoint and not incoming.endpoint:match("^https?://") then
+        return { ok = false, error = _("AI endpoint must be an http:// or https:// URL") }
+    end
+    if next(incoming) == nil then
+        return { ok = false, error = "nothing to save; fill at least one field" }
+    end
+    local saved = self.settings:readSetting("ai", {})
+    if type(saved) ~= "table" then saved = {} end
+    -- Same merge rule as the computer flow: only fields the sender actually
+    -- filled in are overwritten; the key is stored on the Kindle only.
+    for field, value in pairs(incoming) do saved[field] = value end
+    self.settings:saveSetting("ai", saved):flush()
+    local key = incoming.api_key or ""
+    local masked = key ~= ""
+        and (string.rep("•", math.max(#key - 4, 0)) .. key:sub(-4)) or ""
+    UIManager:show(InfoMessage:new{text = _("AI settings saved locally")})
+    return {
+        ok = true,
+        endpoint = incoming.endpoint or "",
+        model = incoming.model or "",
+        key_masked = masked,
+    }
+end
+
+function KindleAnki:on_web_delete_pack(pack)
+    -- Deletion itself is the store's job; its guards only ever touch packs
+    -- inside the library folders and clean progress and AI chats with them.
+    local ok, err = self.store:delete_pack(pack)
+    if not ok then
+        UIManager:show(InfoMessage:new{
+            text = string.format(_("Could not delete pack: %s"), tostring(err)),
+        })
+        return { ok = false, error = tostring(err or "could not delete pack") }
+    end
+    UIManager:show(InfoMessage:new{
+        text = string.format(_("Deleted %s"), pack.title or _("this pack")),
+    })
+    return { ok = true, title = tostring(pack.title or "") }
+end
+
+function KindleAnki:on_web_import_result(result)
+    if result.ok then
+        UIManager:show(InfoMessage:new{
+            text = string.format(_("Imported %s"), tostring(result.title or "")),
+        })
+    else
+        UIManager:show(InfoMessage:new{
+            text = string.format(_("Could not import pack: %s"), tostring(result.error or "")),
+        })
+    end
 end
 
 function KindleAnki:import_from_computer()

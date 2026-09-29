@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh_CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindle Anki · 网页导入</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px; max-width: 720px; margin-inline: auto;
+    font: 16px/1.6 -apple-system, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    color: #1c1c1e; background: #f5f5f0;
+  }
+  h1 { font-size: 22px; margin: 8px 0 2px; }
+  h1 span { font-size: 14px; color: #6b6b70; font-weight: normal; margin-left: 8px; }
+  h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #d8d8d0; padding-bottom: 4px; }
+  #device-info { color: #6b6b70; font-size: 13px; margin: 0 0 16px; }
+  section { margin-bottom: 8px; }
+  button, .pick {
+    display: inline-block; border: 1px solid #9a9a90; border-radius: 10px;
+    background: #ffffff; padding: 12px 22px; font-size: 17px; cursor: pointer;
+  }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.primary { background: #2f6f4f; border-color: #2f6f4f; color: #fff; }
+  .pick { background: #2f6f4f; border-color: #2f6f4f; color: #fff; }
+  #file-name { font-size: 14px; color: #6b6b70; word-break: break-all; }
+  .model { background: #fff; border: 1px solid #d8d8d0; border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .model h3 { font-size: 15px; margin: 2px 0 6px; }
+  .model .kind { font-size: 12px; color: #6b6b70; font-weight: normal; }
+  .model .row { font-size: 14px; margin: 4px 0; }
+  .model .row > span { color: #6b6b70; margin-right: 6px; }
+  .model label.field { display: inline-flex; flex-direction: column; align-items: flex-start;
+    margin: 3px 8px 3px 0; padding: 6px 10px; background: #f5f5f0; border-radius: 8px; }
+  .field-name { font-size: 14px; }
+  .field-sample { font-size: 12px; color: #6b6b70; margin-top: 2px; max-width: 300px;
+    word-break: break-all; }
+  .warn { color: #8a5a00; font-size: 13px; }
+  #report { background: #e8f2ec; border-radius: 10px; padding: 10px 14px; margin: 12px 0;
+    font-size: 14px; word-break: break-all; }
+  #report:empty { display: none; }
+  #error { color: #b3261e; font-size: 14px; margin: 12px 0; word-break: break-all; }
+  #error:empty { display: none; }
+  #pack-list { margin: 4px 0; padding-left: 20px; font-size: 14px; }
+  #pack-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 12px; background: #fff; border: 1px solid #d8d8d0; border-radius: 10px;
+    margin: 6px 0; font-size: 15px; }
+  #pack-list li span { word-break: break-all; }
+  #pack-list li button { padding: 6px 14px; font-size: 14px; color: #b3261e;
+    border-color: #d8b4b0; background: #fff; flex-shrink: 0; }
+  #pack-list li button:disabled { opacity: 0.4; }
+  input[type="text"] { font-size: 16px; padding: 8px 10px; border: 1px solid #9a9a90;
+    border-radius: 8px; width: 100%; max-width: 360px; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .ai-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+  .ai-form button { align-self: flex-start; }
+  #ai-result { background: #e8f2ec; border-radius: 10px; padding: 10px 14px; margin: 12px 0;
+    font-size: 14px; word-break: break-all; }
+  #ai-result.err { background: #f7e8e6; }
+  #ai-result:empty { display: none; }
+</style>
+</head>
+<body>
+<h1>Kindle Anki<span>网页导入</span></h1>
+<p id="device-info">正在连接 Kindle…</p>
+
+<section>
+  <h2>1 · 选择 Anki 导出文件</h2>
+  <label class="pick">选择 .apkg 文件<input type="file" id="file" accept=".apkg" hidden></label>
+  <p id="file-name"></p>
+  <p class="warn" style="font-size:13px">
+    在电脑版 Anki 里导出时请勾选「支持旧版本 Anki」（<em>Support older Anki versions</em>）。
+    卡片内容只在本页浏览器里处理，不会发往别的服务器。
+  </p>
+</section>
+
+<section id="step2" hidden>
+  <h2>2 · 为每种笔记勾选正面 / 背面字段</h2>
+  <p style="font-size:14px;margin:4px 0">卡包标题：<input type="text" id="pack-title-input" placeholder="留空则自动取名"></p>
+  <div id="models"></div>
+</section>
+
+<section id="step3" hidden>
+  <h2>3 · 转换并导入</h2>
+  <div class="actions">
+    <button id="convert" class="primary">转 换</button>
+    <button id="upload" disabled>导入到 Kindle</button>
+    <button id="download" disabled>下载 .zip 备用</button>
+  </div>
+  <div id="report"></div>
+</section>
+
+<section>
+  <h2>AI 设置（可选）</h2>
+  <p class="warn" style="font-size:13px">
+    把大模型接口、模型名和 API key 粘贴在这里，填上 Kindle 弹窗里显示的 4 位配对码，
+    点「保存到 Kindle」。密钥只存这台 Kindle，不会写进卡包，也不会从这里读回。
+    局域网内明文传输，建议家里 Wi-Fi 使用。
+  </p>
+  <div class="ai-form">
+    <input type="text" id="ai-endpoint" placeholder="https://api.example.com/v1">
+    <input type="text" id="ai-model" placeholder="模型名称">
+    <input type="password" id="ai-key" placeholder="API key" autocomplete="off">
+    <input type="text" id="ai-prompt" placeholder="系统提示词（可选）">
+    <input type="text" id="ai-code" placeholder="Kindle 上的 4 位配对码" inputmode="numeric" maxlength="4">
+    <button id="ai-save">保存到 Kindle</button>
+  </div>
+  <div id="ai-result"></div>
+</section>
+
+<section>
+  <h2>管理 Kindle 上的卡包</h2>
+  <ul id="pack-list" style="list-style:none;padding-left:0"></ul>
+</section>
+
+<div id="error"></div>
+
+<script src="apkg.js"></script>
+<script src="convert.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

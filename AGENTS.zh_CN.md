@@ -8,10 +8,10 @@
 
 ## 产品边界
 
-- 电脑转 `.apkg`。插件不解包 Anki 文件。
+- 浏览器（手机/电脑）或桌面电脑转 `.apkg`。插件不解包 Anki 文件，只接收转换好的卡包。
 - 进度只留在 Kindle。不同步 AnkiWeb、桌面 Anki 或硬件。
 - 不要把 API key 写进卡包 JSON。密钥只放 KOReader 插件设置。
-- 局域网卡包服务器（`:8766`）无认证，只建议家里 Wi-Fi。
+- 局域网卡包服务器（`:8766`）和 Kindle 端浏览器导入页（`:8767`）无认证，只建议家里 Wi-Fi。
 - 双读旧路径 `/mnt/us/folo-anki/` 和 `foloanki.koplugin`。不要自动删除。不要回写已有卡包 JSON。
 
 ## 验证

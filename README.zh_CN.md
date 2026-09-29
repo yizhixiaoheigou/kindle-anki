@@ -39,8 +39,7 @@ Kindle 上的效果：
 ## 需要什么
 
 - 越狱 Kindle + KOReader。
-- 一台电脑做转换。
-- 导入时电脑和 Kindle 在同一套**家里** Wi-Fi。
+- 一部手机或电脑（浏览器里就能转换，不需要装任何东西）。
 
 免安装的转换器是本机构建的未签名应用（macOS universal2 `.app` 和 Windows
 onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有现成
@@ -60,7 +59,15 @@ onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有�
 细节：[docs/USER_GUIDE.zh_CN.md](docs/USER_GUIDE.zh_CN.md)。旧路径：
 [docs/MIGRATION.zh_CN.md](docs/MIGRATION.zh_CN.md)。
 
-## 转换卡包
+## 手机/电脑浏览器里转换并导入（推荐，无需任何工具）
+
+**工具 → 更多工具 → Kindle Anki → 手机/电脑导入**，然后用同一 Wi-Fi 下的手机或电脑
+浏览器打开显示的地址（`http://<Kindle IP>:8767`）。在网页里选 `.apkg`，**转换在浏览器里
+完成**，卡包直接落到这台 Kindle。手机无需安装应用、电脑不用开转换器，Kindle 自己也从不
+解包 Anki 文件。网页还能把 `.zip` 下载下来备用，并且能**管理已导入的卡包**——点删除
+会连同学习进度和 AI 对话一起清掉。
+
+## 电脑转换卡包（备选）
 
 Mac：`desktop/Kindle-Anki-Import.command`（需要 python3 + Tk），或
 `dist/Kindle Anki Import.app`。Windows：`desktop/Kindle-Anki-Import.bat`，或
@@ -85,7 +92,8 @@ Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。
 直连 HTTPS POST `/v1/chat/completions`。卡片带图时，图片会以 base64 一并发给 endpoint。
 思考过程会藏起来，但不会关掉模型思考。卡包 JSON 不带密钥。明文 `http://` 的 endpoint 会
 不加密传输 key，建议用 `https://`。不想在 Kindle 上打长密钥：先在转换器「AI 设置」里
-粘贴好配置，再在 Kindle 选「从电脑导入 AI 设置」，输入转换器窗口显示的配对码即可。
+粘贴好配置，再在 Kindle 选「从电脑导入 AI 设置」，输入转换器窗口显示的配对码即可；
+或者直接粘贴进「手机/电脑导入」网页的 AI 设置区块，配上 Kindle 弹窗里的 4 位配对码。
 
 ## 和 KAnki / anki.koplugin 的差别
 
