@@ -55,23 +55,26 @@ The converter never uploads your deck. It does not write API keys into the pack.
 ### Easiest: convert in a phone/computer browser (no converter needed)
 
 1. Kindle and phone/computer on the same Wi-Fi.
-2. **Tools → More tools → Kindle Anki → Import via browser**. A dialog shows
+2. **Tools → More tools → Kindle Anki → Import packs → Import via browser**. A dialog shows
    the address, for example `http://192.168.1.20:8767/`.
 3. Open that address in the phone/computer browser.
 4. Pick the Anki `.apkg` in the page (export it with *Support older Anki
    versions* checked). The page lists every note type with **all** its
-   fields; each field shows an "例如 …" snippet of its real content. Tick
-   which fields form the card front and which the back — nothing is
-   pre-selected, and Convert refuses until every note type has at least one
-   front and one back field.
-5. Click **转 换** (Convert). The conversion runs inside the browser; card
-   content stays on your device.
-6. Click **导入到 Kindle** (Import to Kindle). The Kindle shows "Imported …"
-   and the pack is ready. **下载 .zip** gives you the same pack as a file.
+   fields; each field shows an "例如 …" snippet of its real content. Tap
+   **正面** (front) or **背面** (back) on each field you want — nothing is
+   pre-selected. A Kindle-shaped preview under each note type shows the
+   first note as it will appear, so a wrong field is easy to spot.
+5. Tap **转换并发送到 Kindle** (Convert and send to Kindle). The conversion
+   runs inside the browser and card content stays on your device; the
+   Kindle then shows "Imported …" and the pack is ready. It refuses, and
+   marks the note type in red, until every note type has at least one front
+   and one back field. **只转换，下载 .zip** gives you the same pack as a file
+   instead.
 
-The same page lists what is already on the Kindle. **删除** (Delete) removes
-a pack together with its study progress and AI chats — the same as the
-plugin's own Manage packs, straight from the browser.
+The **卡包** (Packs) tab lists what is already on the Kindle. **删除**
+(Delete) asks once more, then removes the pack together with its study
+progress and AI chats — the same as the plugin's own Manage packs. The
+**AI** tab saves AI settings onto the Kindle (see below).
 
 The page also has an **AI settings** box: paste your endpoint, model, and
 API key plus the 4-digit pairing code shown in the same Kindle dialog, and
@@ -94,7 +97,7 @@ type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
 Port **8766** has no password. Home Wi-Fi only.
 
 1. Kindle and computer on the same Wi-Fi.
-2. **Tools → More tools → Kindle Anki → Import from computer**.
+2. **Tools → More tools → Kindle Anki → Import packs → Import from computer**.
 3. Type that IP (it is remembered next time).
 4. Pick the pack. The plugin downloads it itself.
 
@@ -102,8 +105,8 @@ If macOS asks to allow Python incoming connections, allow it on a home network.
 
 USB is only a fallback: copy the zip onto the Kindle and use **Import pack**.
 
-To remove a pack: **Tools → More tools → Kindle Anki → Manage packs**, or open a pack and
-choose **Delete this pack**. Progress and AI chats for that pack go with it.
+To remove a pack: **Tools → More tools → Kindle Anki → Manage packs**, or the menu icon
+at the top left of **Open packs**. Progress and AI chats for that pack go with it.
 
 Importing a pack whose file name or title is already on the Kindle keeps the
 existing one and says so. To update a pack, delete the old one first; its
@@ -118,11 +121,18 @@ Kindle Anki → Language / 语言**.
 
 ## 4. Study and optional AI
 
-Start studying / starred / retry missed / Browse. Again waits 10 minutes.
-Hard / Good / Easy use a day-granularity SM-2 variant. Progress stays on the
-Kindle. There is no AnkiWeb sync.
+**Open packs** lists your packs with what is left to study today. Tap one to
+see today's plan (reviews and new cards) and **Start studying**; missed,
+starred, and browse-all are one tap away with their counts. A pack with a
+single deck opens that deck directly.
 
-Optional AI: **Tools → More tools → Kindle Anki → AI settings**. Enter endpoint, model, and
+On a card, **Show back** reveals the answer under the question; the four
+ratings sit in one row with the next interval on each. Again waits 10
+minutes. Hard / Good / Easy use a day-granularity SM-2 variant. At the end of
+a round you see how you rated the cards and can retry the missed ones.
+Progress stays on the Kindle. There is no AnkiWeb sync.
+
+Optional AI: **Tools → More tools → Kindle Anki → AI settings → Edit AI settings**. Enter endpoint, model, and
 API key **on the Kindle**. The converter does not embed keys in pack JSON. Requests POST
 the card text and images (base64) to the endpoint; plain `http://` sends the key
 unencrypted. To skip typing on the Kindle: click **AI settings** in the converter, paste

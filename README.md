@@ -68,7 +68,7 @@ Details: [docs/USER_GUIDE.md](docs/USER_GUIDE.md). Old paths:
 
 ## Convert and import from a phone/computer browser (no tools needed)
 
-**Tools → More tools → Kindle Anki → Import via browser**, then open the shown
+**Tools → More tools → Kindle Anki → Import packs → Import via browser**, then open the shown
 address (`http://<kindle-ip>:8767`) on any phone or computer on the same Wi-Fi.
 Pick the `.apkg` in that page — the conversion runs **inside the browser**, and
 the finished pack lands on the Kindle directly. Nothing is installed on the
@@ -88,7 +88,7 @@ fields, Convert. Output: `name.kindle-anki.zip`.
 
 ## Import over Wi-Fi
 
-Keep the converter open. **Tools → More tools → Kindle Anki → Import from computer** and
+Keep the converter open. **Tools → More tools → Kindle Anki → Import packs → Import from computer** and
 type the printed IP. The LAN server on port 8766 has **no password** and is
 home-Wi-Fi only. USB **Import pack** is the fallback.
 
@@ -100,7 +100,7 @@ SM-2.
 
 ## Optional AI
 
-**Tools → More tools → Kindle Anki → AI settings.** Endpoint, model, and API key stay **on
+**Tools → More tools → Kindle Anki → AI settings → Edit AI settings.** Endpoint, model, and API key stay **on
 the Kindle**. Direct HTTPS POST `/v1/chat/completions`. Card images are sent along as
 base64 when a card has them. Thinking tags are
 hidden, not disabled. Pack JSON does not carry keys. Plain `http://` endpoints send the

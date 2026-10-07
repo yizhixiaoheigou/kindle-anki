@@ -83,13 +83,17 @@ package.preload["libs/libkoreader-lfs"] = function()
     }
 end
 
+local classes = {}
 for _, name in ipairs({
     "ui/widget/buttondialog", "ui/widget/confirmbox", "ui/widget/infomessage",
-    "ui/widget/inputdialog", "ui/widget/multiinputdialog",
+    "ui/widget/inputdialog", "ui/widget/multiinputdialog", "ui/widget/menu",
 }) do
     local class = widget_class()
+    classes[name] = class
     package.preload[name] = function() return class end
 end
+local Menu = classes["ui/widget/menu"]
+local ButtonDialog = classes["ui/widget/buttondialog"]
 package.preload["datastorage"] = function()
     return { getSettingsDir = function() return "/tmp/kindle-anki-harness" end }
 end
@@ -157,10 +161,21 @@ local function new_plugin(card)
     plugin.cards = { card }
     plugin.card_position = 1
     plugin.session_mode = "study"
+    plugin.reviews = {}
+    plugin.flushes = 0
+    plugin.summary = { total = 1, due = 0, new = 1, new_today = 1, today = 1, starred = 0, missed = 0, daily_new = 20 }
     plugin.store = {
         card_state = function() return { interval = 0 } end,
         is_starred = function() return false end,
         Schedule = { preview_days = function() return 1 end },
+        daily_new_for = function() return plugin.summary.daily_new end,
+        deck_summary = function() return plugin.summary end,
+        pack_summary = function() return plugin.summary end,
+        flush_progress = function() plugin.flushes = plugin.flushes + 1 end,
+        record_review = function(_, _, card, rating) table.insert(plugin.reviews, rating) end,
+        set_next_index = function() end,
+        list = function() return plugin.library or {} end,
+        build_session = function() return plugin.cards, {} end,
     }
     return plugin
 end
@@ -219,7 +234,7 @@ viewer = last_viewer()
 check("old: front has no text_format", viewer.text_format == nil)
 check("old: front has no html file", viewer.file == nil)
 check("old: front has no markup", not has_markup(viewer.text))
-check("old: front shows progress", viewer.text:find("第 1 / 1 张", 1, true) ~= nil)
+check("old: progress sits in the title", viewer.title:find("1 / 1", 1, true) ~= nil)
 check("old: front shows raw apostrophe", viewer.text:find("The island's surface", 1, true) ~= nil)
 check("old: front hides back", viewer.text:find("茂盛的", 1, true) == nil)
 local images = find_button(viewer, "查看图片（1）")
@@ -240,7 +255,7 @@ check("old: back shows back text", viewer.text:find("茂盛的 a/b", 1, true) ~=
 images = find_button(viewer, "查看图片（2）")
 check("old: back image button", images ~= nil)
 local texts = button_texts(viewer)
-check("old: Next stays the last button", texts[#texts] == "下一张" or texts[#texts] == "Next")
+check("old: Exit stays the last button", texts[#texts] == "退出")
 if images then
     shown = {}
     images.callback()
@@ -311,12 +326,106 @@ do
         check("switching saves the locale", saved.locale == "en" and english.checked_func())
         TextViewer.html_text_formats = nil
         plugin:show_card()
-        check("progress follows the language", last_viewer().text:find("Card 1 / 1", 1, true) ~= nil)
+        check("buttons follow the language", find_button(last_viewer(), "Show back") ~= nil)
         language.sub_item_table[1].callback()
         plugin:show_card()
-        check("switching back restores Chinese", last_viewer().text:find("第 1 / 1 张", 1, true) ~= nil)
+        check("switching back restores Chinese", find_button(last_viewer(), "显示答案") ~= nil)
     end
     I18N.set_locale("zh_CN")
+end
+
+-- ------------------------------------------------------------------
+-- Navigation screens
+-- ------------------------------------------------------------------
+
+local function last_of(class)
+    for index = #shown, 1, -1 do
+        if shown[index]._class == class then return shown[index] end
+    end
+end
+
+local function dialog_button(dialog, text)
+    for _, row in ipairs(dialog.buttons or {}) do
+        for _, button in ipairs(row) do
+            if button.text == text then return button end
+        end
+    end
+end
+
+do
+    TextViewer.html_text_formats = NEW_TEXTVIEWER_FORMATS
+    local two_decks = { title = "Two", decks = { { id = 1, name = "A" }, { id = 2, name = "B" } }, cards = {} }
+    plugin = new_plugin(short_card)
+    plugin.library = { plugin.pack, two_decks }
+    plugin.summary = { total = 30, due = 5, new = 20, new_today = 12, today = 17, starred = 2, missed = 0, daily_new = 20 }
+    shown = {}
+    plugin:open_library()
+    local library = last_of(Menu)
+    check("library is a full-screen list", library ~= nil and library.covers_fullscreen == true)
+    check("library rows show today's count", library and library.item_table[1].mandatory == "待学 17")
+    check("library has the actions icon", library and library.title_bar_left_icon == "appbar.menu")
+
+    -- A single-deck pack goes straight to its deck screen.
+    plugin.pack.decks = { { id = 1, name = "Only" } }
+    shown = {}
+    library.item_table[1].callback()
+    local home = last_of(ButtonDialog)
+    check("single deck skips the deck list", home ~= nil and last_of(Menu) == nil)
+    check("deck title shows today's plan", home and home.title:find("今天：复习 5 张，新卡 12 张", 1, true) ~= nil)
+    check("study button carries the count", home and dialog_button(home, "开始学习 (17)") ~= nil)
+    local missed = home and dialog_button(home, "错题再练 (0)")
+    check("empty missed list is disabled", missed ~= nil and missed.enabled == false)
+    shown = {}
+    dialog_button(home, "返回").callback()
+    check("back from a single deck returns to the library", last_of(Menu) ~= nil
+        and last_of(Menu).title == "Kindle Anki")
+
+    -- Several decks get a list with their own counts.
+    shown = {}
+    plugin:open_decks(two_decks)
+    local decks = last_of(Menu)
+    check("multi-deck pack lists its decks", decks ~= nil and #decks.item_table == 2
+        and decks.title_bar_left_icon == "chevron.left")
+
+    -- Nothing left today: the main button offers more instead.
+    plugin.summary = { total = 30, due = 0, new = 0, new_today = 0, today = 0, starred = 0, missed = 0, daily_new = 20 }
+    shown = {}
+    plugin:open_deck_actions(two_decks.decks[1])
+    check("finished deck offers to study more", dialog_button(last_of(ButtonDialog), "今天学完了，再学几张") ~= nil)
+end
+
+do
+    -- A round: rate every card, then the summary counts the ratings.
+    TextViewer.html_text_formats = NEW_TEXTVIEWER_FORMATS
+    local second = { id = 9, deck_id = 1, type = "short_answer", front = "Q2", back = "A2" }
+    plugin = new_plugin(short_card)
+    plugin.cards = { short_card, second }
+    plugin.summary = { total = 2, due = 0, new = 0, new_today = 0, today = 0, starred = 0, missed = 1, daily_new = 20 }
+    plugin:begin_session(plugin.deck, "study")
+    check("session opens on the first card", last_viewer().title:find("1 / 2", 1, true) ~= nil)
+    plugin:show_answer(nil, nil)
+    check("answer shows the question above the back", last_viewer().text:find("lush", 1, true) ~= nil
+        and last_viewer().text:find("茂盛的", 1, true) ~= nil)
+    check("ratings share one row", #last_viewer().buttons_table[1] == 4)
+    find_button(last_viewer(), "重来 · 10 分钟").callback()
+    plugin:show_answer(nil, nil)
+    shown = {}
+    find_button(last_viewer(), "良好 · 1 天后").callback()
+    local done = last_of(ButtonDialog)
+    check("round summary counts ratings", done and done.title:find("本轮评分 2 张：重来 1，困难 0，良好 1，简单 0", 1, true) ~= nil)
+    check("round summary offers missed cards", done and dialog_button(done, "错题再练 (1)") ~= nil)
+    check("ratings were recorded", plugin.reviews[1] == "again" and plugin.reviews[2] == "good")
+    check("progress is flushed at the end of a round", plugin.flushes >= 1)
+end
+
+do
+    -- A choice card says whether the pick was right.
+    TextViewer.html_text_formats = NEW_TEXTVIEWER_FORMATS
+    plugin = new_plugin(choice_card)
+    plugin:show_answer({ [2] = true })
+    check("right choice is marked correct", last_viewer().text:find("回答正确", 1, true) ~= nil)
+    plugin:show_answer({ [1] = true })
+    check("wrong choice is marked", last_viewer().text:find("回答有误", 1, true) ~= nil)
 end
 
 if failures > 0 then

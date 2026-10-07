@@ -826,6 +826,51 @@ function Store:deck_cards(pack, deck_id)
     return cards
 end
 
+-- Today's numbers for one deck, for the list and deck screens. `today`
+-- is what a study session would hold now: due reviews plus the new cards
+-- the pack's daily quota still allows (the quota is shared by its decks).
+function Store:deck_summary(pack, deck)
+    local today = Schedule.today()
+    local stats = self:day_stats(pack, today)
+    local daily_new = self:daily_new_for(pack)
+    local new_remaining = math.max(0, (daily_new or 0) - (stats.new_done or 0))
+    local summary = { total = 0, due = 0, new = 0, starred = 0, missed = 0, daily_new = daily_new }
+    for _, card in ipairs(pack.cards) do
+        if card.deck_id == deck.id then
+            local state = self:card_state(pack, card)
+            summary.total = summary.total + 1
+            if Schedule.is_new(state) then
+                summary.new = summary.new + 1
+            elseif Schedule.is_due(state, today) then
+                summary.due = summary.due + 1
+            end
+            if state.starred == true then summary.starred = summary.starred + 1 end
+            if state.last_rating == "again" then summary.missed = summary.missed + 1 end
+        end
+    end
+    summary.new_today = math.min(new_remaining, summary.new)
+    summary.today = summary.due + summary.new_today
+    return summary
+end
+
+-- Same numbers for a whole pack. The new-card quota is per pack, so it is
+-- applied once to the pack's total rather than summed over decks.
+function Store:pack_summary(pack)
+    local summary = { total = 0, due = 0, new = 0, starred = 0, missed = 0,
+        daily_new = self:daily_new_for(pack) }
+    for _, deck in ipairs(pack.decks) do
+        local part = self:deck_summary(pack, deck)
+        for _, key in ipairs({ "total", "due", "new", "starred", "missed" }) do
+            summary[key] = summary[key] + part[key]
+        end
+    end
+    local stats = self:day_stats(pack, Schedule.today())
+    local new_remaining = math.max(0, (summary.daily_new or 0) - (stats.new_done or 0))
+    summary.new_today = math.min(new_remaining, summary.new)
+    summary.today = summary.due + summary.new_today
+    return summary
+end
+
 function Store:build_session(pack, deck, mode, extra_count)
     local today = Schedule.today()
     local cards = self:deck_cards(pack, deck.id)

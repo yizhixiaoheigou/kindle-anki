@@ -4,6 +4,16 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Redesigned the plugin and the browser import page.
+  - Plugin: **Open packs** is a full-screen list with what is left to study
+    today; a deck screen shows today's plan with counted buttons; single-deck
+    packs skip the deck list. Cards put progress in the title, show the
+    question above the answer, and keep the four ratings in one row. A round
+    ends with a rating summary. The plugin menu groups import and AI
+    settings into submenus.
+  - Browser page: three tabs (Import, Packs, AI); field mapping uses
+    front/back toggles with a live Kindle preview of the first note; one
+    button converts and sends; deleting a pack asks inline.
 - **Import from computer** now stops a download past 512 MB and removes its
   temporary zip after importing or failing.
 - Fixed: importing a pack whose file name or title is already on the Kindle

@@ -36,7 +36,7 @@ class KindlePluginContractTests(unittest.TestCase):
         main = self.read("main.lua")
         ai = self.read("ai.lua")
         self.assertIn('locale = "zh_CN"', i18n)
-        for token in ("AI 设置", "显示背面", "输入答案", "正确答案：", "正在请求 AI…", "你："):
+        for token in ("AI 设置", "显示答案", "输入答案", "正确答案：", "正在请求 AI…", "你："):
             self.assertIn(token, i18n)
         self.assertIn('local _ = I18N.t', main)
         self.assertIn('local _ = require("i18n").t', ai)
@@ -192,7 +192,7 @@ class KindlePluginContractTests(unittest.TestCase):
         self.assertIn("AGAIN_SECONDS", self.read("schedule.lua"))
         self.assertIn("due_at", self.read("schedule.lua"))
         self.assertIn("preview_days", main)
-        self.assertIn("每天学多少张", i18n)
+        self.assertIn("每天新卡 %d 张", i18n)
         self.assertIn("Import pack", main)
         self.assertIn("Import from computer", main)
         self.assertIn("Open packs", main)
@@ -345,7 +345,7 @@ class BrowserImportContractTests(unittest.TestCase):
 
     def test_browser_import_strings_are_translated(self) -> None:
         for token in (
-            "手机/电脑导入",
+            "用手机或电脑浏览器导入",
             "在手机或电脑浏览器（同一 Wi-Fi）里打开这个地址：",
             "保持开启",
             "导入网页已关闭。",

@@ -1,119 +1,311 @@
 <!doctype html>
-<html lang="zh_CN">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kindle Anki · 网页导入</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Kindle Anki 导入</title>
 <style>
-  :root { color-scheme: light; }
+  :root {
+    --paper: #f3f4f2;
+    --sheet: #ffffff;
+    --ink: #17191c;
+    --graphite: #5a6068;
+    --rule: #d9dcdf;
+    --rule-strong: #b9bec4;
+    --action: #1f4fa8;
+    --action-ink: #ffffff;
+    --action-soft: #e6ecf8;
+    --ok: #1e6b45;
+    --ok-soft: #e4f1ea;
+    --danger: #b42318;
+    --danger-soft: #fbe9e7;
+    --eink: #ebebe5;
+    --eink-ink: #1d1d1b;
+    --eink-muted: #6c6c66;
+    --bezel: #26282c;
+    --radius-sm: 8px;
+    --radius: 14px;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "MiSans",
+      "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #131416;
+      --sheet: #1c1e21;
+      --ink: #eceef0;
+      --graphite: #a2a8b0;
+      --rule: #2d3035;
+      --rule-strong: #454950;
+      --action: #8db0f4;
+      --action-ink: #0d1a33;
+      --action-soft: #1d2840;
+      --ok: #7fcfa3;
+      --ok-soft: #16271e;
+      --danger: #f2948a;
+      --danger-soft: #2e1916;
+      --bezel: #050506;
+    }
+  }
+
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; padding: 16px; max-width: 720px; margin-inline: auto;
-    font: 16px/1.6 -apple-system, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
-    color: #1c1c1e; background: #f5f5f0;
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 var(--sans);
+    padding: 0 16px calc(32px + env(safe-area-inset-bottom));
   }
-  h1 { font-size: 22px; margin: 8px 0 2px; }
-  h1 span { font-size: 14px; color: #6b6b70; font-weight: normal; margin-left: 8px; }
-  h2 { font-size: 17px; margin: 22px 0 8px; border-bottom: 1px solid #d8d8d0; padding-bottom: 4px; }
-  #device-info { color: #6b6b70; font-size: 13px; margin: 0 0 16px; }
-  section { margin-bottom: 8px; }
-  button, .pick {
-    display: inline-block; border: 1px solid #9a9a90; border-radius: 10px;
-    background: #ffffff; padding: 12px 22px; font-size: 17px; cursor: pointer;
+  .wrap { max-width: 640px; margin: 0 auto; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  /* Header: who we are and whether the Kindle answers. */
+  header { padding: 22px 0 14px; }
+  h1 { font-size: 21px; line-height: 1.3; margin: 0; letter-spacing: 0.01em; }
+  .status { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; font-size: 14px; color: var(--graphite); }
+  .status::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--rule-strong);
   }
-  button:disabled { opacity: 0.4; cursor: default; }
-  button.primary { background: #2f6f4f; border-color: #2f6f4f; color: #fff; }
-  .pick { background: #2f6f4f; border-color: #2f6f4f; color: #fff; }
-  #file-name { font-size: 14px; color: #6b6b70; word-break: break-all; }
-  .model { background: #fff; border: 1px solid #d8d8d0; border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
-  .model h3 { font-size: 15px; margin: 2px 0 6px; }
-  .model .kind { font-size: 12px; color: #6b6b70; font-weight: normal; }
-  .model .row { font-size: 14px; margin: 4px 0; }
-  .model .row > span { color: #6b6b70; margin-right: 6px; }
-  .model label.field { display: inline-flex; flex-direction: column; align-items: flex-start;
-    margin: 3px 8px 3px 0; padding: 6px 10px; background: #f5f5f0; border-radius: 8px; }
-  .field-name { font-size: 14px; }
-  .field-sample { font-size: 12px; color: #6b6b70; margin-top: 2px; max-width: 300px;
-    word-break: break-all; }
-  .warn { color: #8a5a00; font-size: 13px; }
-  #report { background: #e8f2ec; border-radius: 10px; padding: 10px 14px; margin: 12px 0;
-    font-size: 14px; word-break: break-all; }
-  #report:empty { display: none; }
-  #error { color: #b3261e; font-size: 14px; margin: 12px 0; word-break: break-all; }
-  #error:empty { display: none; }
-  #pack-list { margin: 4px 0; padding-left: 20px; font-size: 14px; }
-  #pack-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 8px 12px; background: #fff; border: 1px solid #d8d8d0; border-radius: 10px;
-    margin: 6px 0; font-size: 15px; }
-  #pack-list li span { word-break: break-all; }
-  #pack-list li button { padding: 6px 14px; font-size: 14px; color: #b3261e;
-    border-color: #d8b4b0; background: #fff; flex-shrink: 0; }
-  #pack-list li button:disabled { opacity: 0.4; }
-  input[type="text"] { font-size: 16px; padding: 8px 10px; border: 1px solid #9a9a90;
-    border-radius: 8px; width: 100%; max-width: 360px; }
-  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
-  .ai-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
-  .ai-form button { align-self: flex-start; }
-  #ai-result { background: #e8f2ec; border-radius: 10px; padding: 10px 14px; margin: 12px 0;
-    font-size: 14px; word-break: break-all; }
-  #ai-result.err { background: #f7e8e6; }
-  #ai-result:empty { display: none; }
+  .status[data-state="ok"]::before { background: var(--ok); }
+  .status[data-state="down"] { color: var(--danger); }
+  .status[data-state="down"]::before { background: var(--danger); }
+
+  /* Tabs. */
+  .tabs {
+    position: sticky; top: 0; z-index: 2;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    padding: 4px; margin: 0 -4px 18px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  .tab {
+    min-height: 44px; border: 0; border-radius: var(--radius-sm); background: transparent;
+    font-size: 15px; color: var(--graphite); cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--sheet); color: var(--ink); font-weight: 600;
+    box-shadow: 0 0 0 1px var(--rule); }
+  .tab .count { font-variant-numeric: tabular-nums; color: var(--graphite); font-weight: 400; margin-left: 4px; }
+
+  /* Steps of the import: a real sequence, so they are numbered. */
+  .step { margin: 0 0 26px; }
+  .step-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .step-no {
+    flex: none; width: 26px; height: 26px; border-radius: 50%;
+    display: inline-grid; place-items: center;
+    font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+    border: 1.5px solid var(--ink); position: relative; top: 2px;
+  }
+  .step h2 { font-size: 17px; line-height: 1.4; margin: 0; }
+  .step[data-locked] { opacity: 0.45; }
+  .step[data-locked] .step-body { pointer-events: none; }
+  .hint { font-size: 14px; color: var(--graphite); margin: 6px 0 0; }
+
+  .drop {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    min-height: 120px; padding: 18px; text-align: center; cursor: pointer;
+    background: var(--sheet); border: 1.5px dashed var(--rule-strong); border-radius: var(--radius);
+  }
+  .drop:hover, .drop[data-over] { border-color: var(--action); background: var(--action-soft); }
+  .drop strong { font-size: 17px; color: var(--action); }
+  .drop span { font-size: 14px; color: var(--graphite); word-break: break-all; }
+  .drop[data-picked] { border-style: solid; }
+  .drop[data-picked] strong { color: var(--ink); }
+
+  label.field-label { display: block; font-size: 14px; color: var(--graphite); margin: 0 0 4px; }
+  input[type="text"], input[type="password"], input[type="url"] {
+    width: 100%; min-height: 46px; padding: 10px 12px; font-size: 16px;
+    background: var(--sheet); border: 1px solid var(--rule-strong); border-radius: var(--radius-sm);
+  }
+  input::placeholder { color: var(--graphite); opacity: 0.8; }
+  .title-row { margin-bottom: 14px; }
+
+  /* One note type: its fields with front/back toggles, then the preview. */
+  .model { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 14px; margin: 0 0 14px; }
+  .model h3 { font-size: 16px; margin: 0 0 4px; word-break: break-all; }
+  .model .need { font-size: 13px; color: var(--graphite); margin: 0 0 8px; }
+  .model[data-incomplete="false"] .need { color: var(--ok); }
+  .model[data-flagged] { border-color: var(--danger); }
+  .model[data-flagged] .need { color: var(--danger); font-weight: 600; }
+  .fields { list-style: none; margin: 0; padding: 0; }
+  .fields li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
+    padding: 10px 0; border-top: 1px solid var(--rule); }
+  .field-name { font-size: 15px; font-weight: 600; word-break: break-all; }
+  .field-sample { grid-column: 1 / -1; font-size: 13px; color: var(--graphite); word-break: break-all;
+    margin-top: -2px; }
+  .sides { display: flex; gap: 6px; }
+  .chip { position: relative; }
+  .chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .chip span {
+    display: inline-grid; place-items: center; min-width: 52px; min-height: 40px; padding: 0 10px;
+    border: 1px solid var(--rule-strong); border-radius: 999px; font-size: 14px; color: var(--graphite);
+  }
+  .chip input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+  .chip input:focus-visible + span { outline: 3px solid var(--action); outline-offset: 2px; }
+
+  /* The Kindle preview: the one bold element on the page. */
+  .preview { display: flex; justify-content: center; margin: 16px 0 4px; }
+  .kindle {
+    width: min(100%, 300px); padding: 14px 12px 26px; border-radius: 22px; background: var(--bezel);
+    box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.6);
+  }
+  .screen { background: var(--eink); color: var(--eink-ink); border-radius: 3px; padding: 10px 14px 16px;
+    min-height: 220px; font-family: var(--serif); }
+  .screen .bar { display: flex; justify-content: space-between; font: 11px/1.4 var(--sans);
+    color: var(--eink-muted); border-bottom: 1px solid #c9c9c2; padding-bottom: 6px; margin-bottom: 12px; }
+  .screen .front { font-size: 18px; line-height: 1.45; white-space: pre-line; word-break: break-word; }
+  .screen .divider { border-top: 1px solid #8f8f88; margin: 12px 0 10px; }
+  .screen .back { font-size: 15px; line-height: 1.5; white-space: pre-line; word-break: break-word;
+    color: #3a3a37; }
+  .screen .empty { color: var(--eink-muted); font-style: normal; font-size: 14px; }
+  .preview-caption { text-align: center; font-size: 13px; color: var(--graphite); margin: 6px 0 0; }
+
+  /* Buttons. */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 48px; padding: 0 20px; border-radius: var(--radius-sm); cursor: pointer;
+    border: 1px solid var(--rule-strong); background: var(--sheet); font-size: 16px;
+  }
+  .btn.primary { width: 100%; min-height: 54px; background: var(--action); border-color: var(--action);
+    color: var(--action-ink); font-size: 17px; font-weight: 600; }
+  .btn.quiet { border-color: transparent; background: transparent; color: var(--action); padding: 0 8px; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .btn.small { min-height: 40px; padding: 0 14px; font-size: 15px; }
+  .actions { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+  /* Messages. */
+  .note { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 15px; margin: 12px 0 0;
+    white-space: pre-line; word-break: break-all; }
+  .note.ok { background: var(--ok-soft); color: var(--ok); }
+  .note.err { background: var(--danger-soft); color: var(--danger); }
+  .note.info { background: var(--action-soft); color: var(--ink); }
+  .note:empty { display: none; }
+
+  /* Packs already on the Kindle. */
+  .packs { list-style: none; margin: 0; padding: 0; }
+  .pack { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 12px 14px; margin: 0 0 10px; }
+  .pack-row { display: flex; align-items: center; gap: 12px; }
+  .pack-title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; word-break: break-all; }
+  .pack-meta { font-size: 13px; color: var(--graphite); font-weight: 400; display: block; }
+  .confirm { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); font-size: 14px; }
+  .confirm p { margin: 0 0 10px; color: var(--danger); }
+  .confirm .row { display: flex; gap: 10px; }
+  .empty-state { text-align: center; color: var(--graphite); padding: 32px 12px; font-size: 15px; }
+
+  /* AI settings. */
+  .form { display: grid; gap: 14px; }
+  .code input { font-size: 26px; letter-spacing: 0.4em; text-align: center; font-variant-numeric: tabular-nums;
+    max-width: 200px; }
+  .lede { font-size: 15px; color: var(--graphite); margin: 0 0 16px; }
+
+  /* Wide screens: the preview stays beside the fields while you tick them. */
+  @media (min-width: 880px) {
+    .wrap { max-width: 900px; }
+    .model { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 0 28px; align-items: start; }
+    .model-preview { position: sticky; top: 72px; }
+    .model-preview .preview { margin-top: 0; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .btn, .chip span, .tab { transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
+  }
 </style>
 </head>
 <body>
-<h1>Kindle Anki<span>网页导入</span></h1>
-<p id="device-info">正在连接 Kindle…</p>
+<div class="wrap">
+  <header>
+    <h1>Kindle Anki</h1>
+    <p class="status" id="device-info" data-state="wait" role="status">正在连接 Kindle…</p>
+  </header>
 
-<section>
-  <h2>1 · 选择 Anki 导出文件</h2>
-  <label class="pick">选择 .apkg 文件<input type="file" id="file" accept=".apkg" hidden></label>
-  <p id="file-name"></p>
-  <p class="warn" style="font-size:13px">
-    在电脑版 Anki 里导出时请勾选「支持旧版本 Anki」（<em>Support older Anki versions</em>）。
-    卡片内容只在本页浏览器里处理，不会发往别的服务器。
-  </p>
-</section>
+  <nav class="tabs" role="tablist" aria-label="页面">
+    <button class="tab" role="tab" id="tab-import" aria-controls="view-import" aria-selected="true">导入</button>
+    <button class="tab" role="tab" id="tab-packs" aria-controls="view-packs" aria-selected="false">卡包<span class="count" id="pack-count"></span></button>
+    <button class="tab" role="tab" id="tab-ai" aria-controls="view-ai" aria-selected="false">AI</button>
+  </nav>
 
-<section id="step2" hidden>
-  <h2>2 · 为每种笔记勾选正面 / 背面字段</h2>
-  <p style="font-size:14px;margin:4px 0">卡包标题：<input type="text" id="pack-title-input" placeholder="留空则自动取名"></p>
-  <div id="models"></div>
-</section>
+  <main>
+    <section id="view-import" role="tabpanel" aria-labelledby="tab-import">
+      <div class="step" id="step1">
+        <div class="step-head"><span class="step-no" aria-hidden="true">1</span><h2>选择 Anki 导出的 .apkg 文件</h2></div>
+        <div class="step-body">
+          <label class="drop" id="drop">
+            <strong id="drop-title">点这里选择 .apkg 文件</strong>
+            <span id="file-name">也可以把文件拖到这里</span>
+            <input type="file" id="file" accept=".apkg" hidden>
+          </label>
+          <p class="hint">在电脑版 Anki 里导出时勾选「支持旧版本 Anki」。文件只在这个浏览器里转换，不会发到别的服务器。</p>
+        </div>
+      </div>
 
-<section id="step3" hidden>
-  <h2>3 · 转换并导入</h2>
-  <div class="actions">
-    <button id="convert" class="primary">转 换</button>
-    <button id="upload" disabled>导入到 Kindle</button>
-    <button id="download" disabled>下载 .zip 备用</button>
-  </div>
-  <div id="report"></div>
-</section>
+      <div class="step" id="step2" data-locked>
+        <div class="step-head"><span class="step-no" aria-hidden="true">2</span><h2>选择正面和背面的字段</h2></div>
+        <div class="step-body">
+          <p class="hint" id="step2-hint">选好文件后，这里会列出每种笔记的字段。</p>
+          <div id="mapping" hidden>
+            <div class="title-row">
+              <label class="field-label" for="pack-title-input">卡包名称</label>
+              <input type="text" id="pack-title-input" placeholder="留空就用文件名">
+            </div>
+            <div id="models"></div>
+          </div>
+        </div>
+      </div>
 
-<section>
-  <h2>AI 设置（可选）</h2>
-  <p class="warn" style="font-size:13px">
-    把大模型接口、模型名和 API key 粘贴在这里，填上 Kindle 弹窗里显示的 4 位配对码，
-    点「保存到 Kindle」。密钥只存这台 Kindle，不会写进卡包，也不会从这里读回。
-    局域网内明文传输，建议家里 Wi-Fi 使用。
-  </p>
-  <div class="ai-form">
-    <input type="text" id="ai-endpoint" placeholder="https://api.example.com/v1">
-    <input type="text" id="ai-model" placeholder="模型名称">
-    <input type="password" id="ai-key" placeholder="API key" autocomplete="off">
-    <input type="text" id="ai-prompt" placeholder="系统提示词（可选）">
-    <input type="text" id="ai-code" placeholder="Kindle 上的 4 位配对码" inputmode="numeric" maxlength="4">
-    <button id="ai-save">保存到 Kindle</button>
-  </div>
-  <div id="ai-result"></div>
-</section>
+      <div class="step" id="step3" data-locked>
+        <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h2>发送到 Kindle</h2></div>
+        <div class="step-body">
+          <div class="actions">
+            <button class="btn primary" id="send">转换并发送到 Kindle</button>
+            <button class="btn quiet" id="download">只转换，下载 .zip</button>
+          </div>
+          <div class="note" id="report" role="status"></div>
+        </div>
+      </div>
+    </section>
 
-<section>
-  <h2>管理 Kindle 上的卡包</h2>
-  <ul id="pack-list" style="list-style:none;padding-left:0"></ul>
-</section>
+    <section id="view-packs" role="tabpanel" aria-labelledby="tab-packs" hidden>
+      <ul class="packs" id="pack-list"></ul>
+    </section>
 
-<div id="error"></div>
+    <section id="view-ai" role="tabpanel" aria-labelledby="tab-ai" hidden>
+      <p class="lede">填好后保存到 Kindle，学习时就能用「AI 解析」。密钥只存在 Kindle 上，这个网页读不回来。局域网里是明文传输，只在家里的 Wi-Fi 用。</p>
+      <div class="form">
+        <div>
+          <label class="field-label" for="ai-endpoint">接口地址</label>
+          <input type="url" id="ai-endpoint" placeholder="https://api.example.com/v1" autocomplete="off" spellcheck="false">
+        </div>
+        <div>
+          <label class="field-label" for="ai-model">模型名称</label>
+          <input type="text" id="ai-model" autocomplete="off" spellcheck="false">
+        </div>
+        <div>
+          <label class="field-label" for="ai-key">API key</label>
+          <input type="password" id="ai-key" autocomplete="off">
+        </div>
+        <div>
+          <label class="field-label" for="ai-prompt">系统提示词（可不填）</label>
+          <input type="text" id="ai-prompt" autocomplete="off">
+        </div>
+        <div class="code">
+          <label class="field-label" for="ai-code">配对码：Kindle 导入弹窗里的 4 位数</label>
+          <input type="text" id="ai-code" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code">
+        </div>
+        <button class="btn primary" id="ai-save">保存到 Kindle</button>
+      </div>
+      <div class="note" id="ai-result" role="status"></div>
+    </section>
+
+    <div class="note err" id="error" role="alert"></div>
+  </main>
+</div>
 
 <script src="apkg.js"></script>
 <script src="convert.js"></script>

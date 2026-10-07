@@ -5,6 +5,7 @@ local DataStorage = require("datastorage")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local LuaSettings = require("luasettings")
+local Menu = require("ui/widget/menu")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
 local Store = require("store")
 local Screen = require("device").screen
@@ -128,24 +129,28 @@ function KindleAnki:addToMainMenu(menu_items)
         sorting_hint = "more_tools",
         sub_item_table = {
             {
-                text = _("Import via browser"),
-                callback = function() self:open_browser_import() end,
-            },
-            {
-                text = _("Import from computer"),
-                callback = function() self:import_from_computer() end,
-            },
-            {
-                text = _("Import AI settings from computer"),
-                callback = function() self:open_ai_share_import() end,
-            },
-            {
                 text = _("Open packs"),
                 callback = function() self:open_library() end,
             },
             {
+                text = _("Import packs"),
+                sub_item_table = {
+                    { text = _("Import via browser"), callback = function() self:open_browser_import() end },
+                    { text = _("Import from computer"), callback = function() self:import_from_computer() end },
+                    { text = _("Import pack"), callback = function() self:import_pack() end },
+                },
+            },
+            {
                 text = _("Manage packs"),
                 callback = function() self:open_pack_manager() end,
+            },
+            {
+                text = _("AI settings"),
+                sub_item_table = {
+                    { text = _("Edit AI settings"), callback = function() self:open_ai_settings() end },
+                    { text = _("Import AI settings from computer"), callback = function() self:open_ai_share_import() end },
+                    { text = _("Clean AI storage"), callback = function() self:clean_ai_storage() end },
+                },
             },
             {
                 -- Bilingual on purpose: a reader who cannot read the
@@ -238,112 +243,152 @@ function KindleAnki:fetch_ai_settings(host, code)
     })
 end
 
+-- Right-hand label for a pack or deck row: what studying it now would hold.
+local function today_label(summary)
+    if summary.daily_new == nil then
+        return string.format(_("%d cards"), summary.total)
+    end
+    if summary.today > 0 then
+        return string.format(_("%d to study"), summary.today)
+    end
+    return _("Done today")
+end
+
+-- Full-screen list in KOReader's own file-browser style. `back` puts a
+-- back arrow in the title bar; `actions` puts the menu icon there instead.
+function KindleAnki:show_list(key, options)
+    close_widget(self[key])
+    local menu
+    menu = Menu:new{
+        title = options.title,
+        subtitle = options.subtitle,
+        item_table = options.items,
+        is_borderless = true,
+        is_popout = false,
+        covers_fullscreen = true,
+        title_bar_fm_style = true,
+        title_bar_left_icon = options.back and "chevron.left" or (options.actions and "appbar.menu") or nil,
+        onLeftButtonTap = function()
+            if options.back then
+                close_widget(menu)
+                options.back()
+            elseif options.actions then
+                options.actions()
+            end
+        end,
+        -- Menu calls this after every selection as well as on close.
+        close_callback = function() close_widget(menu) end,
+    }
+    self[key] = menu
+    UIManager:show(menu)
+end
+
 function KindleAnki:open_library()
     self.packs = self.store:list()
-    local buttons = {
-        {{
-            text = _("Import via browser"),
-            align = "left",
-            callback = function()
-                close_widget(self.library_dialog)
-                self:open_browser_import()
-            end,
-        }},
-        {{
-            text = _("Import from computer"),
-            align = "left",
-            callback = function() self:import_from_computer() end,
-        }},
-        {{
-            text = _("Import pack"),
-            align = "left",
-            callback = function() self:import_pack() end,
-        }},
-        {{
-            text = _("Manage packs"),
-            align = "left",
-            callback = function()
-                close_widget(self.library_dialog)
-                self:open_pack_manager()
-            end,
-        }},
-    }
+    local items = {}
     for _, pack in ipairs(self.packs) do
         local current_pack = pack
-        table.insert(buttons, {{
+        local summary = self.store:pack_summary(current_pack)
+        table.insert(items, {
             text = current_pack.title,
-            align = "left",
-            callback = function()
-                close_widget(self.library_dialog)
-                self:open_decks(current_pack)
-            end,
-        }})
+            mandatory = today_label(summary),
+            dim = summary.daily_new ~= nil and summary.today == 0,
+            callback = function() self:open_decks(current_pack) end,
+        })
     end
-    table.insert(buttons, {{
-        text = _("AI settings"),
-        align = "left",
-        callback = function() self:open_ai_settings() end,
-    }})
-    table.insert(buttons, {{
-        text = _("Clean AI storage"),
-        align = "left",
-        callback = function()
-            local removed, total = self.store:cleanup_ai_space()
-            UIManager:show(InfoMessage:new{
-                text = string.format(_("Removed %d old AI chats. About %d KB remain."),
-                    removed, math.floor(total / 1024))
-            })
-        end,
-    }})
-    table.insert(buttons, {{
-        text = _("Close"),
-        callback = function() close_widget(self.library_dialog) end,
-    }})
-    self.library_dialog = ButtonDialog:new{
-        title = #self.packs > 0 and _("Choose a Kindle Anki pack")
-            or _("No packs yet. Keep the computer converter open, then use Import from computer."),
-        buttons = buttons,
-        rows_per_page = 12,
+    if #items == 0 then
+        table.insert(items, {
+            text = _("No packs yet. Tap here to import one."),
+            callback = function() self:open_import_hub() end,
+        })
+    end
+    self:show_list("library_dialog", {
+        title = _("Kindle Anki"),
+        subtitle = #self.packs > 0 and _("Tap a pack to study. The menu icon has import, manage, and AI.") or nil,
+        items = items,
+        actions = function() self:open_library_actions() end,
+    })
+end
+
+function KindleAnki:open_library_actions()
+    local dialog
+    local function run(action)
+        return function()
+            close_widget(dialog)
+            close_widget(self.library_dialog)
+            action()
+        end
+    end
+    dialog = ButtonDialog:new{
+        buttons = {
+            {{ text = _("Import packs"), align = "left", callback = run(function() self:open_import_hub() end) }},
+            {{ text = _("Manage packs"), align = "left", callback = run(function() self:open_pack_manager() end) }},
+            {{ text = _("AI settings"), align = "left", callback = run(function() self:open_ai_settings() end) }},
+            {{ text = _("Clean AI storage"), align = "left", callback = function()
+                close_widget(dialog)
+                self:clean_ai_storage()
+            end }},
+        },
+        shrink_unneeded_width = true,
     }
-    UIManager:show(self.library_dialog)
+    UIManager:show(dialog)
+end
+
+function KindleAnki:open_import_hub()
+    local dialog
+    local function run(action)
+        return function()
+            close_widget(dialog)
+            action()
+        end
+    end
+    dialog = ButtonDialog:new{
+        title = _("Import packs"),
+        buttons = {
+            {{ text = _("Phone or computer browser (recommended)"), align = "left",
+               callback = run(function() self:open_browser_import() end) }},
+            {{ text = _("Computer converter over Wi-Fi"), align = "left",
+               callback = run(function() self:import_from_computer() end) }},
+            {{ text = _("A file already on this Kindle"), align = "left",
+               callback = run(function() self:import_pack() end) }},
+            {{ text = _("Cancel"), callback = function() close_widget(dialog) end }},
+        },
+    }
+    UIManager:show(dialog)
+end
+
+function KindleAnki:clean_ai_storage()
+    local removed, total = self.store:cleanup_ai_space()
+    UIManager:show(InfoMessage:new{
+        text = string.format(_("Removed %d old AI chats. About %d KB remain."),
+            removed, math.floor(total / 1024))
+    })
 end
 
 function KindleAnki:open_pack_manager()
-    close_widget(self.library_dialog)
-    close_widget(self.manage_dialog)
     self.packs = self.store:list()
-    local buttons = {}
     if #self.packs == 0 then
         UIManager:show(InfoMessage:new{text = _("No packs to manage.")})
         self:open_library()
         return
     end
+    local items = {}
     for _, pack in ipairs(self.packs) do
         local current_pack = pack
-        table.insert(buttons, {{
-            text = string.format(_("Delete: %s"), current_pack.title),
-            align = "left",
+        table.insert(items, {
+            text = current_pack.title,
+            mandatory = _("Delete"),
             callback = function()
-                close_widget(self.manage_dialog)
-                self:confirm_delete_pack(current_pack, function()
-                    self:open_pack_manager()
-                end)
+                self:confirm_delete_pack(current_pack, function() self:open_pack_manager() end)
             end,
-        }})
+        })
     end
-    table.insert(buttons, {{
-        text = _("Back"),
-        callback = function()
-            close_widget(self.manage_dialog)
-            self:open_library()
-        end,
-    }})
-    self.manage_dialog = ButtonDialog:new{
+    self:show_list("manage_dialog", {
         title = _("Manage packs"),
-        buttons = buttons,
-        rows_per_page = 12,
-    }
-    UIManager:show(self.manage_dialog)
+        subtitle = _("Tap a pack to delete it with its progress and AI chats."),
+        items = items,
+        back = function() self:open_library() end,
+    })
 end
 
 function KindleAnki:confirm_delete_pack(pack, after)
@@ -662,83 +707,93 @@ end
 
 function KindleAnki:open_decks(pack)
     self.pack = pack
-    local buttons = {}
+    -- One deck: its pack screen would be a list of one, so skip it.
+    if #pack.decks == 1 then
+        self.single_deck = true
+        self:open_deck_actions(pack.decks[1])
+        return
+    end
+    self.single_deck = false
+    local items = {}
     for _, deck in ipairs(pack.decks) do
         local current_deck = deck
-        local card_count = 0
-        for _, card in ipairs(pack.cards) do
-            if card.deck_id == current_deck.id then card_count = card_count + 1 end
-        end
-        table.insert(buttons, {{
-            text = string.format("%s (%d)", display_deck_name(current_deck), card_count),
-            align = "left",
-            callback = function()
-                close_widget(self.deck_dialog)
-                self:open_deck_actions(current_deck)
-            end,
-        }})
+        local summary = self.store:deck_summary(pack, current_deck)
+        table.insert(items, {
+            text = display_deck_name(current_deck),
+            mandatory = today_label(summary),
+            dim = summary.daily_new ~= nil and summary.today == 0,
+            callback = function() self:open_deck_actions(current_deck) end,
+        })
     end
-    table.insert(buttons, {{
-        text = _("Delete this pack"),
-        callback = function()
-            close_widget(self.deck_dialog)
-            self:confirm_delete_pack(pack, function() self:open_library() end)
-        end,
-    }})
-    table.insert(buttons, {{
-        text = _("Back"),
-        callback = function()
-            close_widget(self.deck_dialog)
-            self:open_library()
-        end,
-    }})
-    self.deck_dialog = ButtonDialog:new{
+    local summary = self.store:pack_summary(pack)
+    self:show_list("deck_dialog", {
         title = pack.title,
-        buttons = buttons,
-        rows_per_page = 8,
-    }
-    UIManager:show(self.deck_dialog)
+        subtitle = summary.daily_new and string.format(_("Today: %d reviews, %d new"), summary.due, summary.new_today)
+            or string.format(_("%d cards, not started"), summary.total),
+        items = items,
+        back = function() self:open_library() end,
+    })
 end
 
 function KindleAnki:open_deck_actions(deck)
     self.deck = deck
+    close_widget(self.deck_action_dialog)
     if not self.store:daily_new_for(self.pack) then
         self:ask_daily_new(deck, false)
         return
     end
-    local daily_new = self.store:daily_new_for(self.pack)
+    local summary = self.store:deck_summary(self.pack, deck)
+    local function go(action)
+        return function()
+            close_widget(self.deck_action_dialog)
+            action()
+        end
+    end
+    local study_button
+    if summary.today > 0 then
+        study_button = { text = string.format("%s (%d)", _("Start studying"), summary.today),
+            callback = go(function() self:begin_session(deck, "study") end) }
+    else
+        study_button = { text = _("Done for today. Study more"),
+            callback = go(function() self:ask_extra_count(deck) end) }
+    end
     local buttons = {
-        {{ text = _("Start studying"), align = "left", callback = function()
-            close_widget(self.deck_action_dialog)
-            self:start_studying(deck)
-        end }},
-        {{ text = _("Starred cards"), align = "left", callback = function()
-            close_widget(self.deck_action_dialog)
-            self:begin_session(deck, "starred")
-        end }},
-        {{ text = _("Retry missed"), align = "left", callback = function()
-            close_widget(self.deck_action_dialog)
-            self:begin_session(deck, "errors")
-        end }},
-        {{ text = _("Browse cards"), align = "left", callback = function()
-            close_widget(self.deck_action_dialog)
-            self:begin_session(deck, "browse")
-        end }},
-        {{ text = string.format(_("Cards per day (%d)"), daily_new), align = "left", callback = function()
-            close_widget(self.deck_action_dialog)
-            self:ask_daily_new(deck, true)
-        end }},
-        {{ text = _("Back"), callback = function()
-            close_widget(self.deck_action_dialog)
-            self:open_decks(self.pack)
-        end }},
+        { study_button },
+        {
+            { text = string.format("%s (%d)", _("Retry missed"), summary.missed), enabled = summary.missed > 0,
+              callback = go(function() self:begin_session(deck, "errors") end) },
+            { text = string.format("%s (%d)", _("Starred cards"), summary.starred), enabled = summary.starred > 0,
+              callback = go(function() self:begin_session(deck, "starred") end) },
+        },
+        {
+            { text = string.format("%s (%d)", _("Browse cards"), summary.total),
+              callback = go(function() self:begin_session(deck, "browse") end) },
+            { text = string.format(_("Cards per day (%d)"), summary.daily_new),
+              callback = go(function() self:ask_daily_new(deck, true) end) },
+        },
+        {
+            { text = _("Back"), callback = go(function() self:leave_deck() end) },
+        },
     }
     self.deck_action_dialog = ButtonDialog:new{
-        title = string.format(_("%s · %d cards/day"), display_deck_name(deck), daily_new),
+        title = display_deck_name(deck) .. "\n"
+            .. string.format(_("Today: %d reviews, %d new"), summary.due, summary.new_today) .. "\n"
+            .. string.format(_("%d cards, %d not started yet"), summary.total, summary.new),
+        title_align = "center",
         buttons = buttons,
-        rows_per_page = 12,
     }
     UIManager:show(self.deck_action_dialog)
+end
+
+-- Where "back" from a deck goes: the pack's deck list, or the library when
+-- the pack has a single deck and its list was skipped.
+function KindleAnki:leave_deck()
+    self.store:flush_progress()
+    if self.single_deck or not self.pack then
+        self:open_library()
+    else
+        self:open_decks(self.pack)
+    end
 end
 
 function KindleAnki:ask_count(title, description, default_value, confirm_label, on_ok, on_cancel)
@@ -783,7 +838,7 @@ function KindleAnki:ask_daily_new(deck, changing)
             if changing or self.store:daily_new_for(self.pack) then
                 self:open_deck_actions(deck)
             else
-                self:open_decks(self.pack)
+                self:leave_deck()
             end
         end
     )
@@ -820,6 +875,7 @@ function KindleAnki:begin_session(deck, mode, extra_count)
     self.card_position = 1
     self.selected = {}
     self.ai_history = {}
+    self.session_tally = { again = 0, hard = 0, good = 0, easy = 0 }
     if #self.cards == 0 then
         local message = self.session_mode == "extra" and _("No more cards left to study.")
             or self.session_mode == "starred" and _("No starred cards in this deck.")
@@ -838,6 +894,17 @@ end
 
 function KindleAnki:card_progress()
     return string.format(_("Card %d / %d"), self.card_position, #self.cards)
+end
+
+-- Title bar of the card screens: where you are, and how far along.
+function KindleAnki:card_title()
+    return string.format("%s    %d / %d", study_title(self.pack, self.deck), self.card_position, #self.cards)
+end
+
+function KindleAnki:exit_session()
+    close_widget(self.card_view)
+    self.store:flush_progress()
+    self:open_deck_actions(self.deck)
 end
 
 local IMAGE_MAX_WIDTH_RATIO = 0.90
@@ -912,30 +979,57 @@ local function html_wants_field(fields, name)
 end
 
 -- Text blocks shared by the HTML card body and the plain-text fallback.
+-- The card body as role-tagged blocks, shared by the HTML view and the
+-- plain-text fallback. Roles: "status" (how the answer went), "muted" (the
+-- question, repeated above the answer), "main" (what to read now),
+-- "options", and "rule" (the line between question and answer).
 function KindleAnki:card_text_blocks(card, prefix, include_back)
-    local blocks = { self:card_progress() }
-    if prefix and prefix ~= "" then table.insert(blocks, 1, prefix) end
+    local blocks = {}
+    if prefix and prefix ~= "" then table.insert(blocks, { role = "status", text = prefix }) end
+    local options
+    if card.type == "choice" then
+        local lines = {}
+        for index, option in ipairs(card.options) do
+            table.insert(lines, string.format("%s. %s", option_letter(index), option))
+        end
+        options = table.concat(lines, "\n")
+    end
     if include_back then
-        table.insert(blocks, _("Card back:"))
-        table.insert(blocks, tostring(card.back or ""))
+        table.insert(blocks, { role = "muted", text = tostring(card.front or "") })
+        if options then table.insert(blocks, { role = "muted", text = options }) end
+        table.insert(blocks, { role = "rule", text = "" })
+        table.insert(blocks, { role = "main", text = tostring(card.back or "") })
         return blocks
     end
-    table.insert(blocks, _("Card front:"))
-    table.insert(blocks, tostring(card.front or ""))
-    if card.type == "choice" then
-        local options = { _("Options:") }
-        for index, option in ipairs(card.options) do
-            table.insert(options, string.format("%s. %s", option_letter(index), option))
-        end
-        table.insert(blocks, table.concat(options, "\n"))
-    end
+    table.insert(blocks, { role = "main", text = tostring(card.front or "") })
+    if options then table.insert(blocks, { role = "options", text = options }) end
     return blocks
+end
+
+local BLOCK_STYLES = {
+    status = "margin-bottom:0.9em;font-weight:bold",
+    muted = "margin-bottom:0.6em;font-size:0.9em;color:#555555",
+    main = "margin-bottom:0.8em;font-size:1.3em;line-height:1.45",
+    options = "margin-bottom:0.8em;line-height:1.6",
+}
+
+local function plain_card_text(blocks)
+    local parts = {}
+    for _, block in ipairs(blocks) do
+        table.insert(parts, block.role == "rule" and "────────" or block.text)
+    end
+    return table.concat(parts, "\n\n")
 end
 
 function KindleAnki:card_html(card, fields, prefix, include_back)
     local blocks = {}
-    for _, text in ipairs(self:card_text_blocks(card, prefix, include_back)) do
-        table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>', html_escape(text)))
+    for _, block in ipairs(self:card_text_blocks(card, prefix, include_back)) do
+        if block.role == "rule" then
+            table.insert(blocks, '<div style="border-top:1px solid #888888;margin:0.4em 0 0.9em 0"></div>')
+        else
+            table.insert(blocks, string.format('<div style="%s">%s</div>',
+                BLOCK_STYLES[block.role], html_escape(block.text)))
+        end
     end
     if include_back then
         if html_wants_field(fields, "back_images") then
@@ -953,7 +1047,7 @@ end
 
 function KindleAnki:card_html_viewer_options(card, fields, prefix, include_back)
     if not textviewer_renders_html() then
-        return { text = table.concat(self:card_text_blocks(card, prefix, include_back), "\n\n") }
+        return { text = plain_card_text(self:card_text_blocks(card, prefix, include_back)) }
     end
     return {
         text_format = "html",
@@ -1028,6 +1122,11 @@ function KindleAnki:show_card()
     end
     self.selected = self.selected or {}
     local buttons = {}
+    -- Secondary actions share one row under the main one.
+    local secondary = {
+        { text = _("AI explain"), callback = function() self:open_ai_question(card, false) end },
+        { text = _("Exit deck"), callback = function() self:exit_session() end },
+    }
     if card.type == "choice" then
         for index, option in ipairs(card.options) do
             local option_index = index
@@ -1046,36 +1145,26 @@ function KindleAnki:show_card()
         end
         if card.mode == "multiple" then
             table.insert(buttons, {{
-                text = _("Show back"),
+                text = _("Check my choices"),
                 callback = function() self:show_answer(self.selected) end,
             }})
         end
     elseif card.type == "short_answer" then
         table.insert(buttons, {{
-            text = _("Type answer"),
-            callback = function() self:open_typing_dialog(card) end,
-        }})
-        table.insert(buttons, {{
             text = _("Show back"),
             callback = function() self:show_answer(nil, nil) end,
         }})
+        table.insert(secondary, 1, {
+            text = _("Type answer"),
+            callback = function() self:open_typing_dialog(card) end,
+        })
     end
     local images_button = self:card_images_button(card, "front_images")
-    if images_button then table.insert(buttons, images_button) end
-    table.insert(buttons, {{
-        text = _("AI explain"),
-        callback = function() self:open_ai_question(card, false) end,
-    }})
-    table.insert(buttons, {{
-        text = _("Exit deck"),
-        callback = function()
-            close_widget(self.card_view)
-            self:open_decks(self.pack)
-        end,
-    }})
+    if images_button then table.insert(secondary, 1, images_button[1]) end
+    table.insert(buttons, secondary)
     local viewer_options = self:card_html_viewer_options(card, { "front_images", "back_images" })
     self.card_view = TextViewer:new{
-        title = study_title(self.pack, self.deck),
+        title = self:card_title(),
         text = viewer_options.text,
         text_format = viewer_options.text_format,
         file = viewer_options.file,
@@ -1146,8 +1235,8 @@ function KindleAnki:show_answer(selected, typed)
             for _, expected in ipairs(card.expected_answers) do
                 if normalized_answer(expected) == normalized_answer(typed) then matches = true end
             end
-            answer_status = matches and "\n" .. _("Match: correct") .. "\n"
-                or "\n" .. _("Match: check the back") .. "\n"
+            answer_status = matches and "\n" .. _("Match: correct")
+                or "\n" .. _("Match: check the back")
         end
         prefix = _("Your answer:") .. "\n" .. typed .. answer_status
     end
@@ -1155,8 +1244,10 @@ function KindleAnki:show_answer(selected, typed)
         local chosen = selected_labels(selected)
         local correct = {}
         for _, index in ipairs(card.correct_indices) do table.insert(correct, option_letter(index + 1)) end
-        prefix = _("Your choice: ") .. chosen .. "\n" .. _("Correct: ")
-            .. table.concat(correct, ", ")
+        table.sort(correct)
+        local correct_text = table.concat(correct, ", ")
+        prefix = (chosen == correct_text and _("Correct") or _("Not quite")) .. "\n"
+            .. _("Your choice: ") .. chosen .. "\n" .. _("Correct: ") .. correct_text
     end
     local state = self.store:card_state(self.pack, card)
     local Schedule = self.store.Schedule
@@ -1171,51 +1262,48 @@ function KindleAnki:show_answer(selected, typed)
         end
         return string.format("%s · %s", _(name), string.format(_("%d days"), days))
     end
-    local starred = self.store:is_starred(self.pack, card)
-    local star_text = starred and _("Unstar") or _("Star")
-    local buttons
-    if self.session_mode == "browse" then
-        buttons = {
-            {{ text = _("Rate anyway"), callback = function()
-                UIManager:show(InfoMessage:new{text = _("Rating in browse mode updates the study schedule.")})
-                self._browse_rate_unlocked = true
-                self:show_answer(selected, typed)
-            end },
-             { text = _("Next"), callback = function() self:rate_and_next("skipped") end }},
-            {{ text = _("AI explain"), callback = function() self:open_ai_question(card, true) end },
-             { text = _("Exit deck"), callback = function() close_widget(self.card_view); self:open_deck_actions(self.deck) end }},
-        }
-        if self._browse_rate_unlocked then
-            buttons = {
-                {{ text = rating_label("Again", "again"), callback = function() self:rate_and_next("again") end },
-                 { text = rating_label("Hard", "hard"), callback = function() self:rate_and_next("hard") end }},
-                {{ text = rating_label("Good", "good"), callback = function() self:rate_and_next("good") end },
-                 { text = rating_label("Easy", "easy"), callback = function() self:rate_and_next("easy") end }},
-                {{ text = _("AI explain"), callback = function() self:open_ai_question(card, true) end },
-                 { text = _("Next"), callback = function() self:rate_and_next("skipped") end }},
-            }
-        end
-    else
-        buttons = {
-            {{ text = rating_label("Again", "again"), callback = function() self:rate_and_next("again") end },
-             { text = rating_label("Hard", "hard"), callback = function() self:rate_and_next("hard") end }},
-            {{ text = rating_label("Good", "good"), callback = function() self:rate_and_next("good") end },
-             { text = rating_label("Easy", "easy"), callback = function() self:rate_and_next("easy") end }},
-            {{ text = _("AI explain"), callback = function() self:open_ai_question(card, true) end },
-             { text = star_text, callback = function()
-                self.store:toggle_star(self.pack, card)
-                self:show_answer(selected, typed)
-             end }},
-            {{ text = _("Next"), callback = function() self:rate_and_next("skipped") end }},
-        }
+    local function rate(rating)
+        return function() self:rate_and_next(rating) end
     end
+    local starred = self.store:is_starred(self.pack, card)
+    local tools = {
+        { text = _("AI explain"), callback = function() self:open_ai_question(card, true) end },
+        { text = starred and _("Unstar") or _("Star"), callback = function()
+            self.store:toggle_star(self.pack, card)
+            self:show_answer(selected, typed)
+        end },
+    }
     local images_button = self:card_images_button(card, "back_images")
-    if images_button then table.insert(buttons, #buttons, images_button) end
+    if images_button then table.insert(tools, images_button[1]) end
+    local ratings = {
+        { text = rating_label("Again", "again"), callback = rate("again") },
+        { text = rating_label("Hard", "hard"), callback = rate("hard") },
+        { text = rating_label("Good", "good"), callback = rate("good") },
+        { text = rating_label("Easy", "easy"), callback = rate("easy") },
+    }
+    local buttons
+    if self.session_mode == "browse" and not self._browse_rate_unlocked then
+        -- Browsing does not touch the schedule unless asked to.
+        table.insert(tools, { text = _("Rate anyway"), callback = function()
+            UIManager:show(InfoMessage:new{text = _("Rating in browse mode updates the study schedule.")})
+            self._browse_rate_unlocked = true
+            self:show_answer(selected, typed)
+        end })
+        table.insert(tools, { text = _("Exit deck"), callback = function() self:exit_session() end })
+        buttons = {
+            {{ text = _("Next"), callback = rate("skipped") }},
+            tools,
+        }
+    else
+        table.insert(tools, { text = _("Skip"), callback = rate("skipped") })
+        table.insert(tools, { text = _("Exit deck"), callback = function() self:exit_session() end })
+        buttons = { ratings, tools }
+    end
     local viewer_options = self:card_html_viewer_options(
         card, { "front_images", "back_images" }, prefix, true
     )
     self.card_view = TextViewer:new{
-        title = study_title(self.pack, self.deck),
+        title = self:card_title(),
         text = viewer_options.text,
         text_format = viewer_options.text_format,
         file = viewer_options.file,
@@ -1233,6 +1321,8 @@ function KindleAnki:rate_and_next(rating)
         local as_extra = self.session_mode == "extra"
             or (self.session_meta and self.session_meta.as_extra)
         self.store:record_review(self.pack, card, rating, { as_extra = as_extra })
+        self.session_tally = self.session_tally or {}
+        self.session_tally[rating] = (self.session_tally[rating] or 0) + 1
     end
     close_widget(self.card_view)
     self.card_position = self.card_position + 1
@@ -1241,38 +1331,51 @@ function KindleAnki:rate_and_next(rating)
     self._browse_rate_unlocked = false
     self.ai_history = {}
     if self.card_position > #self.cards then
-        local title = self.session_mode == "browse" and _("Browse complete")
-            or self.session_mode == "extra" and _("Extra study complete")
-            or _("Today's goal reached")
-        local buttons = {}
-        local missed = self.store:build_session(self.pack, self.deck, "errors")
-        if self.session_mode ~= "errors" and #missed > 0 then
-            table.insert(buttons, {{ text = _("Retry missed"), callback = function()
-                close_widget(self.done_dialog)
-                self:begin_session(self.deck, "errors")
-            end }})
-        end
-        table.insert(buttons, {{ text = _("Start studying"), callback = function()
-            close_widget(self.done_dialog)
-            self:start_studying(self.deck)
-        end }})
-        table.insert(buttons, {{ text = _("Browse cards"), callback = function()
-            close_widget(self.done_dialog)
-            self:begin_session(self.deck, "browse")
-        end }})
-        table.insert(buttons, {{ text = _("Back"), callback = function()
-            close_widget(self.done_dialog)
-            self:open_deck_actions(self.deck)
-        end }})
-        self.done_dialog = ButtonDialog:new{
-            title = title,
-            buttons = buttons,
-            rows_per_page = 8,
-        }
-        UIManager:show(self.done_dialog)
+        self:show_round_done()
         return
     end
     self:show_card()
+end
+
+-- End of a round: what was done, and the sensible next steps.
+function KindleAnki:show_round_done()
+    self.store:flush_progress()
+    local title = self.session_mode == "browse" and _("Browse complete")
+        or self.session_mode == "extra" and _("Extra study complete")
+        or _("Today's goal reached")
+    local tally = self.session_tally or {}
+    local rated = (tally.again or 0) + (tally.hard or 0) + (tally.good or 0) + (tally.easy or 0)
+    if rated > 0 then
+        title = title .. "\n" .. string.format(_("%d cards rated: Again %d, Hard %d, Good %d, Easy %d"),
+            rated, tally.again or 0, tally.hard or 0, tally.good or 0, tally.easy or 0)
+    end
+    local function go(action)
+        return function()
+            close_widget(self.done_dialog)
+            action()
+        end
+    end
+    local buttons = {}
+    local summary = self.store:deck_summary(self.pack, self.deck)
+    if self.session_mode ~= "errors" and summary.missed > 0 then
+        table.insert(buttons, {{ text = string.format("%s (%d)", _("Retry missed"), summary.missed),
+            callback = go(function() self:begin_session(self.deck, "errors") end) }})
+    end
+    if summary.today > 0 then
+        table.insert(buttons, {{ text = string.format("%s (%d)", _("Start studying"), summary.today),
+            callback = go(function() self:begin_session(self.deck, "study") end) }})
+    else
+        table.insert(buttons, {{ text = _("Study more"),
+            callback = go(function() self:ask_extra_count(self.deck) end) }})
+    end
+    table.insert(buttons, {{ text = _("Back to deck"),
+        callback = go(function() self:open_deck_actions(self.deck) end) }})
+    self.done_dialog = ButtonDialog:new{
+        title = title,
+        title_align = "center",
+        buttons = buttons,
+    }
+    UIManager:show(self.done_dialog)
 end
 
 function KindleAnki:ai_config()

@@ -17,6 +17,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "tests" / "lua_harness" / "run_pack_validation.lua"
 ZIP_HARNESS = ROOT / "tests" / "lua_harness" / "run_zip_extract.lua"
+SUMMARY_HARNESS = ROOT / "tests" / "lua_harness" / "run_store_summary.lua"
 
 LUA = shutil.which("lua") or shutil.which("luajit")
 # CI sets KINDLE_ANKI_REQUIRE_TOOLS=1 so a missing interpreter fails the run
@@ -65,6 +66,21 @@ class StoreLuaTests(unittest.TestCase):
                 timeout=60,
                 cwd=str(ROOT),
             )
+        self.assertEqual(
+            result.returncode, 0,
+            "lua harness failed:\n" + result.stdout + "\n" + result.stderr,
+        )
+        self.assertIn("ALL OK", result.stdout)
+        self.assertNotIn("FAIL", result.stdout)
+
+    def test_deck_and_pack_summaries(self) -> None:
+        result = subprocess.run(
+            [LUA, str(SUMMARY_HARNESS)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=str(ROOT),
+        )
         self.assertEqual(
             result.returncode, 0,
             "lua harness failed:\n" + result.stdout + "\n" + result.stderr,
