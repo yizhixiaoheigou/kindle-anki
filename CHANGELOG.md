@@ -4,6 +4,8 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- **Import from computer** now stops a download past 512 MB and removes its
+  temporary zip after importing or failing.
 - Fixed: importing a pack whose file name or title is already on the Kindle
   said "Imported" although the existing pack was kept unchanged. The plugin
   and the browser page now say it was not replaced and how to update it.

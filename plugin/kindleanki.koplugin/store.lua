@@ -154,6 +154,7 @@ end
 -- Unpacked-size cap for one pack zip, against zip bombs. Converted packs
 -- are card text plus images, far below this.
 local MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
+local MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 
 local function safe_zip_entry(name)
     -- Zip-slip guard: no absolute paths, backslashes, or ".." anywhere.
@@ -674,22 +675,34 @@ function Store:import_from_computer(host, name, port, pack_id)
     local dest = PACK_DIR .. "/.download.kindle-anki.zip"
     local file, err = io.open(dest, "wb")
     if not file then return nil, err end
+    -- Same cap as the :8767 upload; a bad or hostile "computer" could
+    -- otherwise fill the Kindle's storage.
+    local received = 0
+    local file_sink = ltn12.sink.file(file)
+    local function capped_sink(chunk, sink_err)
+        if chunk then
+            received = received + #chunk
+            if received > MAX_DOWNLOAD_BYTES then return nil, "pack is larger than 512 MB" end
+        end
+        return file_sink(chunk, sink_err)
+    end
     socketutil:set_timeout(20, 120)
     local ok, code = pcall(function()
         return socket.skip(1, http.request{
             url = url,
-            sink = ltn12.sink.file(file),
+            sink = capped_sink,
         })
     end)
     socketutil:reset_timeout()
-    if not ok then
-        pcall(function() file:close() end)
-        return nil, tostring(code)
-    end
-    if tonumber(code) ~= 200 then
+    pcall(function() file:close() end)
+    if not ok or tonumber(code) ~= 200 then
+        os.remove(dest)
+        if not ok then return nil, tostring(code) end
         return nil, "download failed: " .. tostring(code)
     end
-    return self:import_from_path(dest)
+    local pack, import_err, existing = self:import_from_path(dest)
+    os.remove(dest)
+    return pack, import_err, existing
 end
 
 function Store:progress_for(pack)
