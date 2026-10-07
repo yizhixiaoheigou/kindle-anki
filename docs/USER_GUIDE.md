@@ -18,7 +18,7 @@ official plugin.
    two plugins do not register the same menu.
 4. Eject the Kindle and **fully quit KOReader**, then reopen it. A partial
    restart can keep the old plugin in memory.
-5. Open **Tools → More tools → Kindle Anki**.
+5. Open **Tools → Kindle Anki**.
 
 Packs already under `/mnt/us/folo-anki/` still list. New imports go to
 `/mnt/us/kindle-anki/packs/`. See [MIGRATION.md](MIGRATION.md).
@@ -55,7 +55,7 @@ The converter never uploads your deck. It does not write API keys into the pack.
 ### Easiest: convert in a phone/computer browser (no converter needed)
 
 1. Kindle and phone/computer on the same Wi-Fi.
-2. **Tools → More tools → Kindle Anki → Import packs → Import via browser**. A dialog shows
+2. **Tools → Kindle Anki → Import packs → Import via browser**. A dialog shows
    the address, for example `http://192.168.1.20:8767/`.
 3. Open that address in the phone/computer browser.
 4. Pick the Anki `.apkg` in the page (export it with *Support older Anki
@@ -97,7 +97,7 @@ type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
 Port **8766** has no password. Home Wi-Fi only.
 
 1. Kindle and computer on the same Wi-Fi.
-2. **Tools → More tools → Kindle Anki → Import packs → Import from computer**.
+2. **Tools → Kindle Anki → Import packs → Import from computer**.
 3. Type that IP (it is remembered next time).
 4. Pick the pack. The plugin downloads it itself.
 
@@ -105,7 +105,7 @@ If macOS asks to allow Python incoming connections, allow it on a home network.
 
 USB is only a fallback: copy the zip onto the Kindle and use **Import pack**.
 
-To remove a pack: **Tools → More tools → Kindle Anki → Manage packs**, or the menu icon
+To remove a pack: **Tools → Kindle Anki → Manage packs**, or the menu icon
 at the top left of **Open packs**. Progress and AI chats for that pack go with it.
 
 Importing a pack whose file name or title is already on the Kindle keeps the
@@ -116,8 +116,8 @@ Daily new-card count is set on the Kindle the first time you open the pack, not
 during conversion. The study day, and with it the daily count and due dates,
 turns over at the Kindle's local midnight.
 
-The plugin starts in Simplified Chinese. Switch with **Tools → More tools →
-Kindle Anki → Language / 语言**.
+The plugin starts in Simplified Chinese. Switch with **Tools → Kindle Anki →
+Language / 语言**.
 
 ## 4. Study and optional AI
 
@@ -132,7 +132,7 @@ minutes. Hard / Good / Easy use a day-granularity SM-2 variant. At the end of
 a round you see how you rated the cards and can retry the missed ones.
 Progress stays on the Kindle. There is no AnkiWeb sync.
 
-Optional AI: **Tools → More tools → Kindle Anki → AI settings → Edit AI settings**. Enter endpoint, model, and
+Optional AI: **Tools → Kindle Anki → AI settings → Edit AI settings**. Enter endpoint, model, and
 API key **on the Kindle**. The converter does not embed keys in pack JSON. Requests POST
 the card text and images (base64) to the endpoint; plain `http://` sends the key
 unencrypted. To skip typing on the Kindle: click **AI settings** in the converter, paste

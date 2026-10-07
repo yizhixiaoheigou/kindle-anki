@@ -126,7 +126,7 @@ end
 function KindleAnki:addToMainMenu(menu_items)
     menu_items.kindle_anki = {
         text = _("Kindle Anki"),
-        sorting_hint = "more_tools",
+        sorting_hint = "tools",
         sub_item_table = {
             {
                 text = _("Open packs"),

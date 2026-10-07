@@ -38,7 +38,7 @@ There are three parts. They share one contract, the **pack format** (`docs/PACK_
 2. **Browser converter (`plugin/kindleanki.koplugin/web/*.js`).** This is a JS port of the Python pipeline. It is served by the plugin, runs in the phone or computer browser, and uploads a finished pack. `test_kindle_web_converter.py` runs both converters on the same synthetic `.apkg` and requires field-identical packs, zip layouts, and inspect reports. **Any change to the conversion logic must be made in both Python and JS.**
 
 3. **KOReader plugin (`plugin/kindleanki.koplugin/`, Lua, AGPL).**
-   - `main.lua` holds the menu (Tools → More tools → Kindle Anki), the review UI for both card families, the imports (USB, `:8766` pull, browser page), and AI settings.
+   - `main.lua` holds the menu (Tools → Kindle Anki), the review UI for both card families, the imports (USB, `:8766` pull, browser page), and AI settings.
    - `store.lua` handles pack and progress persistence under `/mnt/us/kindle-anki/{packs,ai}`, and dual-reads legacy `/mnt/us/folo-anki/`.
    - `schedule.lua` is day-based SM-2. Again = 10 min.
    - `ai.lua` makes a direct POST to `/v1/chat/completions` with bounded history, and sends card images as base64.

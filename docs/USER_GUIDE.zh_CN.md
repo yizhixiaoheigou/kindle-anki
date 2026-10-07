@@ -15,7 +15,7 @@
    USB 连上电脑时，路径是 `Kindle/koreader/plugins/kindleanki.koplugin/`。
 3. 如果以前装过 `foloanki.koplugin`，删掉旧文件夹，避免两个插件抢同一个菜单。
 4. 弹出 Kindle，**完全退出 KOReader** 再打开。只热重启可能还在用旧插件。
-5. 打开 **工具 → 更多工具 → Kindle Anki**。
+5. 打开 **工具 → Kindle Anki**。
 
 已经在 `/mnt/us/folo-anki/` 里的卡包仍会列出。新导入写到
 `/mnt/us/kindle-anki/packs/`。见 [MIGRATION.zh_CN.md](MIGRATION.zh_CN.md)。
@@ -50,7 +50,7 @@ Windows：免安装的 `Kindle-Anki-Import` onedir（若有），或
 ### 最省事：手机/电脑浏览器里转换（不需要装任何东西）
 
 1. Kindle 和手机/电脑连同一个 Wi-Fi。
-2. **工具 → 更多工具 → Kindle Anki → 导入卡包 → 用手机或电脑浏览器导入**。弹窗里会显示地址，例如
+2. **工具 → Kindle Anki → 导入卡包 → 用手机或电脑浏览器导入**。弹窗里会显示地址，例如
    `http://192.168.1.20:8767/`。
 3. 用手机或电脑浏览器打开这个地址。
 4. 在网页里选 Anki `.apkg`（导出时勾选「支持旧版本 Anki」）。网页会列出每种笔记
@@ -80,7 +80,7 @@ Kindle（见下文）。
 「复制 IP」。端口 **8766** 没有密码。只用家里 Wi-Fi。
 
 1. Kindle 和电脑连同一个 Wi-Fi。
-2. **工具 → 更多工具 → Kindle Anki → 导入卡包 → 从电脑转换器导入**。
+2. **工具 → Kindle Anki → 导入卡包 → 从电脑转换器导入**。
 3. 填这个 IP（下次会记住）。
 4. 选卡包，插件自己下载。
 
@@ -88,7 +88,7 @@ Kindle（见下文）。
 
 USB 只当备用：把 zip 拷进 Kindle，再用「导入卡包」。
 
-删除卡包：**工具 → 更多工具 → Kindle Anki → 管理卡包**，或在「我的卡包」左上角菜单里选「管理卡包」。
+删除卡包：**工具 → Kindle Anki → 管理卡包**，或在「我的卡包」左上角菜单里选「管理卡包」。
 该卡包的进度和 AI 对话会一起清掉。
 
 导入的卡包如果文件名或标题与 Kindle 上已有的相同，会保留旧卡包并提示「没有覆盖」。要更新
@@ -97,7 +97,7 @@ USB 只当备用：把 zip 拷进 Kindle，再用「导入卡包」。
 每天学多少张在 Kindle 上第一次打开卡包时设置，不在电脑转换时写入。学习日（以及每日额度和
 到期日）按 Kindle 本地时间零点翻页。
 
-插件默认简体中文。切换语言：**工具 → 更多工具 → Kindle Anki → Language / 语言**。
+插件默认简体中文。切换语言：**工具 → Kindle Anki → Language / 语言**。
 
 ## 4. 刷题和可选 AI
 
@@ -109,7 +109,7 @@ USB 只当备用：把 zip 拷进 Kindle，再用「导入卡包」。
 时间。重来等 10 分钟，困难 / 良好 / 简单用天粒度 SM-2。一轮学完会显示这轮的评分情况，
 并可以直接重做答错的。进度只留在 Kindle，不同步 AnkiWeb。
 
-可选 AI：**工具 → 更多工具 → Kindle Anki → AI 设置 → 填写 AI 设置**。在 Kindle 上填 endpoint、模型和 API
+可选 AI：**工具 → Kindle Anki → AI 设置 → 填写 AI 设置**。在 Kindle 上填 endpoint、模型和 API
 key。转换器不会把密钥写进卡包 JSON。请求会把卡片文本和图片（base64）发给 endpoint；
 明文 `http://` 传输 key 不加密。不想在 Kindle 上打字：先点转换器的 **AI 设置** 粘贴好
 配置，再在 Kindle 用「从电脑导入 AI 设置」+ 转换器窗口显示的配对码一键导入；或者直接

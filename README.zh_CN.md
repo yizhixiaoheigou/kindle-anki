@@ -63,7 +63,7 @@ onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有�
 
 ## 手机/电脑浏览器里转换并导入（推荐，无需任何工具）
 
-**工具 → 更多工具 → Kindle Anki → 导入卡包 → 用手机或电脑浏览器导入**，然后用同一 Wi-Fi 下的手机或电脑
+**工具 → Kindle Anki → 导入卡包 → 用手机或电脑浏览器导入**，然后用同一 Wi-Fi 下的手机或电脑
 浏览器打开显示的地址（`http://<Kindle IP>:8767`）。在网页里选 `.apkg`，**转换在浏览器里
 完成**，卡包直接落到这台 Kindle。手机无需安装应用、电脑不用开转换器，Kindle 自己也从不
 解包 Anki 文件。网页还能把 `.zip` 下载下来备用，并且能**管理已导入的卡包**——点删除
@@ -80,7 +80,7 @@ Mac：`desktop/Kindle-Anki-Import.command`（需要 python3 + Tk），或
 
 ## Wi-Fi 导入
 
-转换窗口不要关。**工具 → 更多工具 → Kindle Anki → 导入卡包 → 从电脑转换器导入**，填窗口里的 IP。局域网
+转换窗口不要关。**工具 → Kindle Anki → 导入卡包 → 从电脑转换器导入**，填窗口里的 IP。局域网
 8766 端口**没有密码**，只建议家里 Wi-Fi。USB「导入卡包」是退路。
 
 ## 刷题
@@ -90,7 +90,7 @@ Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。
 
 ## 可选 AI
 
-**工具 → 更多工具 → Kindle Anki → AI 设置 → 填写 AI 设置。** endpoint、模型和 API key 只放在 Kindle 上。
+**工具 → Kindle Anki → AI 设置 → 填写 AI 设置。** endpoint、模型和 API key 只放在 Kindle 上。
 直连 HTTPS POST `/v1/chat/completions`。卡片带图时，图片会以 base64 一并发给 endpoint。
 思考过程会藏起来，但不会关掉模型思考。卡包 JSON 不带密钥。明文 `http://` 的 endpoint 会
 不加密传输 key，建议用 `https://`。不想在 Kindle 上打长密钥：先在转换器「AI 设置」里

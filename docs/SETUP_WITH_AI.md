@@ -163,7 +163,7 @@ the device and let the user pick it via the plugin's "Import pack" menu.
    - KOReader was already installed on the device → **fully quit and reopen it**.
    - KOReader was just installed by this run (Branch B) → start it via
      **KUAL → KOReader → Start KOReader**.
-3. Menu: **Tools → More tools → Kindle Anki**.
+3. Menu: **Tools → Kindle Anki**.
 4. The first open of a pack asks for the daily new-card count (1–999, default 20).
 5. Optional AI: open the converter on the computer (double-click
    `Kindle-Anki-Import.command` / `.bat`, or the packaged app from the

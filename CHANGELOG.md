@@ -4,6 +4,8 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- The plugin menu now sits directly under **Tools** instead of **Tools →
+  More tools**.
 - Redesigned the plugin and the browser import page.
   - Plugin: **Open packs** is a full-screen list with what is left to study
     today; a deck screen shows today's plan with counted buttons; single-deck

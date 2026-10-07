@@ -38,7 +38,7 @@ python3 tools/kindle_anki_importer.py --help   # 命令行转换器
 2. **浏览器转换器（`plugin/kindleanki.koplugin/web/*.js`）。** 这是 Python 流水线的 JS 移植，由插件提供页面，在手机或电脑浏览器里运行，然后上传成品包。`test_kindle_web_converter.py` 用同一个合成 `.apkg` 同时跑两套转换器，要求包字段、zip 布局和 inspect 报告完全一致。**改转换逻辑时，Python 和 JS 必须同步修改。**
 
 3. **KOReader 插件（`plugin/kindleanki.koplugin/`，Lua，AGPL）。**
-   - `main.lua`：菜单（工具 → 更多工具 → Kindle Anki）、两类卡片的复习界面、三种导入方式（USB、从 `:8766` 拉取、浏览器页面）和 AI 设置。
+   - `main.lua`：菜单（工具 → Kindle Anki）、两类卡片的复习界面、三种导入方式（USB、从 `:8766` 拉取、浏览器页面）和 AI 设置。
    - `store.lua`：包和学习进度存放在 `/mnt/us/kindle-anki/{packs,ai}`，同时兼容读取旧的 `/mnt/us/folo-anki/`。
    - `schedule.lua`：按天计算的 SM-2，Again = 10 分钟。
    - `ai.lua`：直接 POST 到 `/v1/chat/completions`，历史条数有上限，卡片图片以 base64 发送。
