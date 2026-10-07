@@ -368,6 +368,10 @@ function KindleAnki:attach_webserver(server)
     server.on_result = function(result) self:on_web_import_result(result) end
     server.on_ai_settings = function(payload) return self:on_web_ai_settings(payload) end
     server.on_delete_pack = function(pack) return self:on_web_delete_pack(pack) end
+    server.on_idle_stop = function()
+        if WebServer.active == server then WebServer.active = nil end
+        UIManager:show(InfoMessage:new{text = _("Import page closed after 30 minutes without visits.")})
+    end
 end
 
 function KindleAnki:open_browser_import()
@@ -414,7 +418,7 @@ function KindleAnki:show_browser_import_dialog()
             .. "\n\n"
             .. string.format(_("Pairing code (for AI settings): %s"), code)
             .. "\n\n"
-            .. _("The page keeps working until you tap Stop here or quit KOReader. You can leave this screen and come back later."),
+            .. _("The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."),
         ok_text = _("Keep it running"),
         cancel_text = _("Stop now"),
         ok_callback = function() end,

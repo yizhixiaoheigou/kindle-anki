@@ -339,7 +339,7 @@ class BrowserImportContractTests(unittest.TestCase):
         self.assertIn("on_web_import_result", main)
         self.assertIn("Keep it running", main)
         self.assertIn("Stop now", main)
-        self.assertIn("The page keeps working until you tap Stop here or quit KOReader.", main)
+        self.assertIn("The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes.", main)
         self.assertIn('readSetting("web_port", WebServer.DEFAULT_PORT)', main)
         self.assertIn("runWhenOnline", main)
 

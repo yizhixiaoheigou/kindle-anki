@@ -15,8 +15,9 @@ local blob_path = arg[1] or error("usage: run_webserver.lua <upload-blob-path>")
 -- ------------------------------------------------------------------
 
 local PENDING = {}
+LAST_DELAY = nil
 package.preload["ui/uimanager"] = function()
-    return { scheduleIn = function(_, delay, fn) table.insert(PENDING, fn) end }
+    return { scheduleIn = function(_, delay, fn) LAST_DELAY = delay table.insert(PENDING, fn) end }
 end
 package.preload["libs/libkoreader-lfs"] = function()
     return {
@@ -740,6 +741,22 @@ for host, expected in pairs({
     ["evil.example.com"] = false, ["192.168.1.5.nip.io:8767"] = false, [""] = false,
 }) do
     check("is_local_host(" .. host .. ")", WebServer.is_local_host(host) == expected)
+end
+
+-- Idle behaviour: slow polling with no connections, auto-stop when idle.
+reap()
+pump_step()
+check("idle pump polls slowly", LAST_DELAY == WebServer.IDLE_POLL)
+do
+    local idle_stops = 0
+    local idle = WebServer:new{ store = store, port = 18798, on_idle_stop = function() idle_stops = idle_stops + 1 end }
+    assert(idle:start(), "idle server failed to start")
+    idle:pump()
+    check("recently opened page keeps running", idle:is_running() and idle_stops == 0)
+    idle.last_activity = socket.gettime() - WebServer.IDLE_STOP_SECONDS - 1
+    idle:pump()
+    check("idle page stops itself", not idle:is_running() and idle_stops == 1)
+    idle:stop()
 end
 
 server:stop()

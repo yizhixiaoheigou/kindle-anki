@@ -82,7 +82,8 @@ settings; tap **Stop now** on the Kindle and open the page again for a new
 code.
 
 Leave the dialog's **Stop** for when you are done; the small server on port
-8767 closes with it. It has no password — home Wi-Fi only, like the computer
+8767 closes with it. It also closes by itself after 30 minutes with no
+visits. It has no password — home Wi-Fi only, like the computer
 converter's port 8766. The Kindle never unpacks Anki files itself; it only
 receives the finished pack.
 

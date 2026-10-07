@@ -37,6 +37,14 @@ WebServer.HEAD_TIMEOUT = 15
 -- unlimited endpoint falls to a LAN brute force in seconds; once locked,
 -- stopping and reopening the page on the Kindle issues a fresh code.
 WebServer.MAX_AI_ATTEMPTS = 5
+-- Poll every 50ms while a connection is open (large responses go out in
+-- many partial sends), but only twice a second while nobody is connected:
+-- the page may stay open for hours on a battery-powered e-reader.
+WebServer.ACTIVE_POLL = 0.05
+WebServer.IDLE_POLL = 0.5
+-- Close the page after this long with no connections at all. It has no
+-- password, so it should not sit open on the LAN for days.
+WebServer.IDLE_STOP_SECONDS = 30 * 60
 
 -- Upload bodies must carry one of these types. A cross-site page can only
 -- send text/plain, form, or multipart bodies without a CORS preflight, so
@@ -238,6 +246,7 @@ function WebServer:new(options)
         on_result = options.on_result,
         on_ai_settings = options.on_ai_settings,
         on_delete_pack = options.on_delete_pack,
+        on_idle_stop = options.on_idle_stop,
         ai_code = options.ai_code,
         ai_failures = 0,
         upload_path = options.upload_path,
@@ -274,6 +283,7 @@ function WebServer:start()
             tcp:settimeout(0)
             self.server = tcp
             self.running = true
+            self.last_activity = socket.gettime()
             self:schedule_pump()
             return true
         end
@@ -305,9 +315,10 @@ end
 
 function WebServer:schedule_pump()
     if not self.running then return end
-    -- 50ms cadence: a large response over Wi-Fi is sent in many partial
-    -- chunks, and each yielded send must not wait a whole UI tick.
-    UIManager:scheduleIn(0.05, function()
+    -- Fast cadence only while serving: a large response over Wi-Fi is sent
+    -- in many partial chunks, and each yielded send must not wait long.
+    local delay = #self.conns > 0 and WebServer.ACTIVE_POLL or WebServer.IDLE_POLL
+    UIManager:scheduleIn(delay, function()
         pcall(function() self:pump() end)
     end)
 end
@@ -355,6 +366,7 @@ function WebServer:pump()
         local client = self.server:accept()
         if not client then break end
         client:settimeout(0)
+        self.last_activity = socket.gettime()
         local conn = {
             socket = client,
             co = coroutine.create(function() return self:handle(client) end),
@@ -363,6 +375,12 @@ function WebServer:pump()
         }
         table.insert(self.conns, conn)
         self:step_connection(conn)
+    end
+    if self.running and #self.conns == 0
+            and socket.gettime() - (self.last_activity or 0) > WebServer.IDLE_STOP_SECONDS then
+        self:stop()
+        if self.on_idle_stop then pcall(self.on_idle_stop) end
+        return
     end
     if self.running then
         self:schedule_pump()

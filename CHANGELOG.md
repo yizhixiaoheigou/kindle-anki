@@ -4,6 +4,10 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- The Kindle import page now polls twice a second while nobody is connected
+  (was 20 times a second around the clock) and closes itself after 30
+  minutes without visits, so it no longer drains the battery or stays open
+  on the LAN for days.
 - Security: pack zips are now unpacked with KOReader's own libarchive reader
   (`ffi/archiver`, KOReader 2025.08+), which checks every name first, writes
   only regular files, and caps the unpacked size at 1 GB. Older KOReader

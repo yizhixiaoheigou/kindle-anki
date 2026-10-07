@@ -23,8 +23,9 @@ local catalogs = {
         ["Import page closed."] = "导入网页已关闭。",
         ["Could not open the import page: %s"] = "无法打开导入网页：%s",
         ["Pairing code (for AI settings): %s"] = "配对码（网页里保存 AI 设置用）：%s",
-        ["The page keeps working until you tap Stop here or quit KOReader. You can leave this screen and come back later."] =
-            "导入页会一直开着：你可以退出这个界面，手机随时能连；用完回到这里点「立即停止」，或退出 KOReader 自动关闭。",
+        ["The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."] =
+            "导入页会一直开着：你可以退出这个界面，手机随时能连；用完回到这里点「立即停止」。退出 KOReader 或 30 分钟无人访问时也会自动关闭。",
+        ["Import page closed after 30 minutes without visits."] = "导入网页 30 分钟无人访问，已自动关闭。",
         ["Keep it running"] = "保持开启（用完再停）",
         ["Stop now"] = "立即停止",
         ["Open packs"] = "打开卡包",

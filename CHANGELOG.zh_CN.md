@@ -4,6 +4,8 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- Kindle 导入页在无人连接时改为每秒轮询 2 次(原来全天每秒 20 次),30 分钟无人访问
+  自动关闭,不再持续耗电,也不会在局域网上一开好几天。
 - 安全:卡包 zip 改用 KOReader 自带的 libarchive 读取器(`ffi/archiver`,KOReader 2025.08+)
   解压:先检查全部文件名,只写普通文件,解压后总大小上限 1 GB。更早的 KOReader 仍用
   `unzip`,但列不出文件名的 zip 会被拒绝,不再盲解。旧代码引用了不存在的模块(`ffi/archive`),
