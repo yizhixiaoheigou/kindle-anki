@@ -233,6 +233,31 @@ local function validate_image_refs(card, field)
     return true
 end
 
+local function all_strings(list)
+    for index = 1, #list do
+        if type(list[index]) ~= "string" then return false end
+    end
+    return true
+end
+
+-- Mirrors tools/kindle_cards.py validate_package for the fields the review
+-- UI reads: packs reach the Kindle over unauthenticated LAN pages, and a
+-- string index or a table option would crash KOReader mid-review.
+local function valid_correct_indices(card)
+    local indices = card.correct_indices
+    if type(indices) ~= "table" or #indices < 1 then return false end
+    local seen = {}
+    for position = 1, #indices do
+        local index = indices[position]
+        if type(index) ~= "number" or index ~= math.floor(index)
+                or index < 0 or index >= #card.options or seen[index] then
+            return false
+        end
+        seen[index] = true
+    end
+    return card.mode ~= "single" or #indices == 1
+end
+
 local function validate_pack(pack)
     if type(pack) ~= "table" or pack.version ~= 1 or not FORMAT_NAMES[pack.format] then
         return false, "unsupported pack format"
@@ -248,13 +273,14 @@ local function validate_pack(pack)
     end
     local deck_ids = {}
     for _, deck in ipairs(pack.decks) do
-        if type(deck.id) ~= "number" or type(deck.name) ~= "string" then
+        if type(deck) ~= "table" or type(deck.id) ~= "number" or type(deck.name) ~= "string" then
             return false, "invalid deck entry"
         end
         deck_ids[deck.id] = true
     end
     local card_ids = {}
     for _, card in ipairs(pack.cards) do
+        if type(card) ~= "table" then return false, "invalid card entry" end
         if type(card.id) ~= "number" or type(card.deck_id) ~= "number" or not deck_ids[card.deck_id] then
             return false, "invalid card deck reference"
         end
@@ -268,6 +294,10 @@ local function validate_pack(pack)
             return false, "card has invalid image references"
         end
         if card.type == "short_answer" then
+            if card.expected_answers ~= nil and (type(card.expected_answers) ~= "table"
+                    or not all_strings(card.expected_answers)) then
+                return false, "short answer card has invalid expected answers"
+            end
         elseif card.type == "choice" then
             if card.mode ~= "single" and card.mode ~= "multiple" then
                 return false, "choice card has invalid mode"
@@ -275,8 +305,11 @@ local function validate_pack(pack)
             if type(card.options) ~= "table" or #card.options < 2 or #card.options > 64 then
                 return false, "choice card has an invalid option count"
             end
-            if type(card.correct_indices) ~= "table" or #card.correct_indices < 1 then
-                return false, "choice card is missing correct indices"
+            if not all_strings(card.options) then
+                return false, "choice card options must be text"
+            end
+            if not valid_correct_indices(card) then
+                return false, "choice card has invalid correct indices"
             end
         else
             return false, "unknown card type"

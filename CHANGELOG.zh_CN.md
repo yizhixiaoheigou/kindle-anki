@@ -4,6 +4,9 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- 修复:插件现在会拒收选择题 `correct_indices` 非整数、越界或重复,选项不是文本,
+  或 `expected_answers` 不是文本的卡包,与转换器自身的规则一致。此前这类卡包能导入,
+  翻到答案时会让 KOReader 崩溃。
 - 安全:转换器的 `/ai-settings` 接口(`:8766`)配对码输错 5 次即锁定,在转换器里重新
   保存 AI 设置会换新码;配对码改用 `secrets` 生成。此前 4 位码可在局域网内约 1 秒穷举,
   导致 API key 泄露。

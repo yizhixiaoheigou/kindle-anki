@@ -4,6 +4,10 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Fixed: the plugin now refuses packs whose choice cards have non-integer,
+  out-of-range, or duplicate `correct_indices`, non-text options, or non-text
+  `expected_answers`, matching the converter's own rules. Such a pack used
+  to load and then crash KOReader when the card's answer was shown.
 - Security: the converter's `/ai-settings` endpoint (`:8766`) now locks after
   5 wrong pairing codes; saving the AI settings again issues a new code. The
   code comes from `secrets` instead of `random`. Before this, the 4-digit code
