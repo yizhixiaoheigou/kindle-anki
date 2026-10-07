@@ -280,7 +280,12 @@
             headers: { "Content-Type": "application/zip" },
             body: bundle.zipBytes,
         }).then(function (response) { return response.json(); }).then(function (result) {
-            if (result.ok) {
+            if (result.ok && result.existing) {
+                $("report").textContent = "Kindle 上已有同名卡包《" + result.title +
+                    "》，没有覆盖。要更新，请先在下方删除旧卡包，再导入一次。";
+                $("upload").disabled = false;
+                refreshPacks();
+            } else if (result.ok) {
                 $("report").textContent = "已导入 Kindle：《" + result.title + "》（" + result.cards +
                     " 张）。现在可以在 Kindle 上打开卡包了。";
                 refreshPacks();

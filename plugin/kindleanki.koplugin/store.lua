@@ -505,6 +505,9 @@ local function copy_pack_into_library(pack, source_json)
     return pack
 end
 
+-- Returns pack, error, existing. `existing` is true when a pack with the
+-- same file name or title is already in the library: it is returned as-is
+-- and never overwritten, so callers must not report a fresh import.
 function Store:import_from_path(path)
     if type(path) ~= "string" or path == "" then
         return nil, "missing path"
@@ -530,7 +533,7 @@ function Store:import_from_path(path)
         local hit = listed_match(self, pack, json_path)
         if hit then
             os.execute('rm -rf "' .. tmp:gsub('"', '\\"') .. '"')
-            return hit
+            return hit, nil, true
         end
         pack, err = copy_pack_into_library(pack, json_path)
         os.execute('rm -rf "' .. tmp:gsub('"', '\\"') .. '"')
@@ -542,7 +545,7 @@ function Store:import_from_path(path)
     local pack, err = self:load(path)
     if not pack then return nil, err end
     local hit = listed_match(self, pack, path)
-    if hit then return hit end
+    if hit then return hit, nil, true end
     return copy_pack_into_library(pack, path)
 end
 

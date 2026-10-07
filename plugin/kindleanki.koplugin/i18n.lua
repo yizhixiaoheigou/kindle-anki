@@ -47,6 +47,8 @@ local catalogs = {
         ["No packs on the computer. Convert a deck first."] = "电脑上还没有卡包。请先转换一个牌组。",
         ["Downloading pack…"] = "正在下载卡包…",
         ["Imported %s"] = "已导入 %s",
+        ["%s is already on this Kindle and was not replaced. Delete it first to import a new version."] =
+            "Kindle 上已有「%s」，没有覆盖。要更新，请先删除旧卡包再导入。",
         ["Could not import pack: %s"] = "无法导入卡包：%s",
         ["No packs yet. Keep the computer converter open, then use Import from computer."] =
             "还没有卡包。请先打开电脑上的转换工具，再用「从电脑导入」。",

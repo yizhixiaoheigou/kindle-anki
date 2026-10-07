@@ -163,6 +163,7 @@ blob_file:close()
 local upload_dir = os.tmpname() .. "-kindle-web"
 os.execute("mkdir -p " .. upload_dir)
 local imported_path = nil
+STORE_EXISTING = false
 local imported_bytes = nil
 
 local store = {}
@@ -187,7 +188,7 @@ function store:import_from_path(path)
     local file = assert(io.open(path, "rb"))
     imported_bytes = file:read("*a")
     file:close()
-    return { title = "测试卡包", cards = { 1, 2 } }
+    return { title = "测试卡包", cards = { 1, 2 } }, nil, STORE_EXISTING
 end
 
 -- ------------------------------------------------------------------
@@ -741,6 +742,22 @@ for host, expected in pairs({
     ["evil.example.com"] = false, ["192.168.1.5.nip.io:8767"] = false, [""] = false,
 }) do
     check("is_local_host(" .. host .. ")", WebServer.is_local_host(host) == expected)
+end
+
+do
+    -- Re-importing a pack the Kindle already has is reported, not hidden.
+    STORE_EXISTING = true
+    local client = connect()
+    client:settimeout(5)
+    assert(client:send("POST /api/packs?name=again.zip HTTP/1.1\r\nHost: kindle\r\n" ..
+        "Content-Type: application/zip\r\nContent-Length: 4\r\n\r\nzzzz"))
+    client:settimeout(0)
+    local head, body = drive(client)
+    check("re-import answers 200", head:find("200 OK", 1, true) ~= nil)
+    check("re-import is flagged as existing", body:find('"existing":true', 1, true) ~= nil)
+    client:close()
+    reap()
+    STORE_EXISTING = false
 end
 
 -- Idle behaviour: slow polling with no connections, auto-stop when idle.

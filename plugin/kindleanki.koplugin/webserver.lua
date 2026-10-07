@@ -753,7 +753,7 @@ function WebServer:upload_name(request)
 end
 
 function WebServer:handle_upload(client, name)
-    local pack, err = self.store:import_from_path(self.upload_path)
+    local pack, err, existing = self.store:import_from_path(self.upload_path)
     self:remove_upload()
     if not pack then
         local result = { ok = false, name = name, error = tostring(err or "import failed") }
@@ -765,6 +765,8 @@ function WebServer:handle_upload(client, name)
         name = name,
         title = tostring(pack.title or name),
         cards = #(pack.cards or {}),
+        -- A pack with this name or title was already there and was kept.
+        existing = existing == true,
     }
     if self.on_result then pcall(self.on_result, result) end
     return self:send_json(client, 200, result)

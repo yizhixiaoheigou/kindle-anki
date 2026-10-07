@@ -105,6 +105,10 @@ USB is only a fallback: copy the zip onto the Kindle and use **Import pack**.
 To remove a pack: **Tools → More tools → Kindle Anki → Manage packs**, or open a pack and
 choose **Delete this pack**. Progress and AI chats for that pack go with it.
 
+Importing a pack whose file name or title is already on the Kindle keeps the
+existing one and says so. To update a pack, delete the old one first; its
+progress goes with it.
+
 Daily new-card count is set on the Kindle the first time you open the pack, not
 during conversion. The study day, and with it the daily count and due dates,
 turns over at the Kindle's local midnight.

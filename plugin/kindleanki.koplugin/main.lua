@@ -507,8 +507,17 @@ function KindleAnki:on_web_delete_pack(pack)
     return { ok = true, title = tostring(pack.title or "") }
 end
 
+local function imported_message(title, existing)
+    if existing then
+        return string.format(_("%s is already on this Kindle and was not replaced. Delete it first to import a new version."), title)
+    end
+    return string.format(_("Imported %s"), title)
+end
+
 function KindleAnki:on_web_import_result(result)
-    if result.ok then
+    if result.ok and result.existing then
+        UIManager:show(InfoMessage:new{text = imported_message(tostring(result.title or ""), true)})
+    elseif result.ok then
         UIManager:show(InfoMessage:new{
             text = string.format(_("Imported %s"), tostring(result.title or "")),
         })
@@ -598,7 +607,7 @@ end
 
 function KindleAnki:download_computer_pack(host, name, pack_id)
     UIManager:show(InfoMessage:new{text = _("Downloading pack…"), timeout = 2})
-    local pack, err = self.store:import_from_computer(host, name, nil, pack_id)
+    local pack, err, existing = self.store:import_from_computer(host, name, nil, pack_id)
     if not pack then
         UIManager:show(InfoMessage:new{
             text = string.format(_("Could not import pack: %s"), tostring(err)),
@@ -607,7 +616,7 @@ function KindleAnki:download_computer_pack(host, name, pack_id)
         return
     end
     UIManager:show(InfoMessage:new{
-        text = string.format(_("Imported %s"), pack.title or name),
+        text = imported_message(pack.title or name, existing),
     })
     self:open_library()
 end
@@ -635,7 +644,7 @@ function KindleAnki:import_pack()
                 or filename:match("%.zip$")
         end,
         onConfirm = function(file_path)
-            local pack, err = self.store:import_from_path(file_path)
+            local pack, err, existing = self.store:import_from_path(file_path)
             if not pack then
                 UIManager:show(InfoMessage:new{
                     text = string.format(_("Could not import pack: %s"), tostring(err)),
@@ -644,7 +653,7 @@ function KindleAnki:import_pack()
                 return
             end
             UIManager:show(InfoMessage:new{
-                text = string.format(_("Imported %s"), pack.title or file_path),
+                text = imported_message(pack.title or file_path, existing),
             })
             self:open_library()
         end,
