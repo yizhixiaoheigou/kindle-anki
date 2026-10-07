@@ -44,6 +44,36 @@ local function close_widget(widget)
     end
 end
 
+-- TextViewer renders HTML only from KOReader v2026.07 (koreader#15588).
+-- Older builds ignore text_format and print the markup verbatim, so cards
+-- fall back to plain text there and images open from a button instead.
+local function textviewer_renders_html()
+    local formats = TextViewer.html_text_formats
+    return type(formats) == "table" and formats.html == true
+end
+
+-- Before v2026.07 the scroll widget was `scroll_text_w`, there was no
+-- `box_widget`, and `onScrollOrNavigate` did not exist.
+local function viewer_scroll_widget(viewer)
+    return viewer and (viewer.scroll_widget or viewer.scroll_text_w)
+end
+
+local function viewer_text_box(viewer)
+    if not viewer then return nil end
+    if viewer.box_widget then return viewer.box_widget end
+    local scroll = viewer_scroll_widget(viewer)
+    return scroll and scroll.text_widget
+end
+
+local function scroll_viewer_page(viewer, direction)
+    if viewer.onScrollOrNavigate then
+        viewer:onScrollOrNavigate(direction)
+        return
+    end
+    local scroll = viewer_scroll_widget(viewer)
+    if scroll and scroll.scrollText then scroll:scrollText(direction) end
+end
+
 local function pack_directory(pack)
     local path = pack and pack._path
     return path and path:match("^(.*)/[^/]+$") or "/mnt/us/kindle-anki/packs"
@@ -842,29 +872,38 @@ local function html_wants_field(fields, name)
     return false
 end
 
-function KindleAnki:card_html(card, fields, prefix, include_back)
-    local blocks = {
-        string.format('<div style="margin-bottom:12px">%s</div>', html_escape(self:card_progress())),
-    }
+-- Text blocks shared by the HTML card body and the plain-text fallback.
+function KindleAnki:card_text_blocks(card, prefix, include_back)
+    local blocks = { self:card_progress() }
     if prefix and prefix ~= "" then table.insert(blocks, 1, prefix) end
     if include_back then
-        table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>', html_escape(_("Card back:"))))
-        table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>', html_escape(card.back)))
-        if html_wants_field(fields, "back_images") then
-            local back_images = self:card_image_html(card, { "back_images" })
-            if back_images ~= "" then table.insert(blocks, back_images) end
-        end
-        return table.concat(blocks, "\n")
+        table.insert(blocks, _("Card back:"))
+        table.insert(blocks, tostring(card.back or ""))
+        return blocks
     end
-    table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>', html_escape(_("Card front:"))))
-    table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>', html_escape(card.front)))
+    table.insert(blocks, _("Card front:"))
+    table.insert(blocks, tostring(card.front or ""))
     if card.type == "choice" then
         local options = { _("Options:") }
         for index, option in ipairs(card.options) do
             table.insert(options, string.format("%s. %s", option_letter(index), option))
         end
-        table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>',
-            html_escape(table.concat(options, "\n"))))
+        table.insert(blocks, table.concat(options, "\n"))
+    end
+    return blocks
+end
+
+function KindleAnki:card_html(card, fields, prefix, include_back)
+    local blocks = {}
+    for _, text in ipairs(self:card_text_blocks(card, prefix, include_back)) do
+        table.insert(blocks, string.format('<div style="margin-bottom:12px">%s</div>', html_escape(text)))
+    end
+    if include_back then
+        if html_wants_field(fields, "back_images") then
+            local back_images = self:card_image_html(card, { "back_images" })
+            if back_images ~= "" then table.insert(blocks, back_images) end
+        end
+        return table.concat(blocks, "\n")
     end
     if html_wants_field(fields, "front_images") then
         local front_images = self:card_image_html(card, { "front_images" })
@@ -874,6 +913,9 @@ function KindleAnki:card_html(card, fields, prefix, include_back)
 end
 
 function KindleAnki:card_html_viewer_options(card, fields, prefix, include_back)
+    if not textviewer_renders_html() then
+        return { text = table.concat(self:card_text_blocks(card, prefix, include_back), "\n\n") }
+    end
     return {
         text_format = "html",
         file = self.pack._path .. ".kindle-card.html",
@@ -881,13 +923,48 @@ function KindleAnki:card_html_viewer_options(card, fields, prefix, include_back)
     }
 end
 
-function KindleAnki:card_image_paths(card)
+-- Old KOReader cannot place images inside the card text, so offer them
+-- in ImageViewer from a button. Returns nil when there is nothing to add.
+function KindleAnki:card_images_button(card, field)
+    if textviewer_renders_html() then return nil end
+    local paths = self:card_image_paths(card, { field })
+    if #paths == 0 then return nil end
+    return {{
+        text = string.format(_("View images (%d)"), #paths),
+        callback = function() self:show_card_images(paths) end,
+    }}
+end
+
+function KindleAnki:show_card_images(paths)
+    local lfs = require("libs/libkoreader-lfs")
+    local existing = {}
+    for _, path in ipairs(paths) do
+        if lfs.attributes(path, "mode") == "file" then table.insert(existing, path) end
+    end
+    if #existing == 0 then
+        UIManager:show(InfoMessage:new{text = _("Image files are missing from this pack.")})
+        return
+    end
+    local ImageViewer = require("ui/widget/imageviewer")
+    if #existing == 1 then
+        UIManager:show(ImageViewer:new{ file = existing[1], fullscreen = true })
+        return
+    end
+    local RenderImage = require("ui/renderimage")
+    local images = { image_disposable = true }
+    for index, path in ipairs(existing) do
+        images[index] = function() return RenderImage:renderImageFile(path, false) end
+    end
+    UIManager:show(ImageViewer:new{ image = images, fullscreen = true })
+end
+
+function KindleAnki:card_image_paths(card, fields)
     local paths = {}
     local seen = {}
     local media_dir = self.pack and self.pack.media_dir
     if type(media_dir) ~= "string" then return paths end
     local base = pack_directory(self.pack) .. "/" .. media_dir
-    for _, field in ipairs({ "front_images", "back_images" }) do
+    for _, field in ipairs(fields or { "front_images", "back_images" }) do
         for _, reference in ipairs(card[field] or {}) do
             local name = type(reference) == "table" and reference.name or reference
             if type(name) == "string" and name ~= "" and name ~= "." and name ~= ".."
@@ -944,6 +1021,8 @@ function KindleAnki:show_card()
             callback = function() self:show_answer(nil, nil) end,
         }})
     end
+    local images_button = self:card_images_button(card, "front_images")
+    if images_button then table.insert(buttons, images_button) end
     table.insert(buttons, {{
         text = _("AI explain"),
         callback = function() self:open_ai_question(card, false) end,
@@ -1031,16 +1110,14 @@ function KindleAnki:show_answer(selected, typed)
             answer_status = matches and "\n" .. _("Match: correct") .. "\n"
                 or "\n" .. _("Match: check the back") .. "\n"
         end
-        prefix = string.format('<div style="margin-bottom:12px">%s</div>', html_escape(
-            _("Your answer:") .. "\n" .. typed .. answer_status))
+        prefix = _("Your answer:") .. "\n" .. typed .. answer_status
     end
     if card.type == "choice" then
         local chosen = selected_labels(selected)
         local correct = {}
         for _, index in ipairs(card.correct_indices) do table.insert(correct, option_letter(index + 1)) end
-        prefix = string.format('<div style="margin-bottom:12px">%s</div>', html_escape(
-            _("Your choice: ") .. chosen .. "\n" .. _("Correct: ")
-                .. table.concat(correct, ", ")))
+        prefix = _("Your choice: ") .. chosen .. "\n" .. _("Correct: ")
+            .. table.concat(correct, ", ")
     end
     local state = self.store:card_state(self.pack, card)
     local Schedule = self.store.Schedule
@@ -1093,6 +1170,8 @@ function KindleAnki:show_answer(selected, typed)
             {{ text = _("Next"), callback = function() self:rate_and_next("skipped") end }},
         }
     end
+    local images_button = self:card_images_button(card, "back_images")
+    if images_button then table.insert(buttons, #buttons, images_button) end
     local viewer_options = self:card_html_viewer_options(
         card, { "front_images", "back_images" }, prefix, true
     )
@@ -1249,7 +1328,7 @@ end
 
 function KindleAnki:scroll_ai_viewer_to_latest(viewer)
     local charpos = self.ai_latest_question_charpos
-    local box = viewer and viewer.box_widget
+    local box = viewer_text_box(viewer)
     if not charpos or not box or not box.lines_per_page or box.lines_per_page < 1 then return end
     if not box.getCharPageTopLineNumber or not box.vertical_string_list then return end
 
@@ -1260,7 +1339,7 @@ function KindleAnki:scroll_ai_viewer_to_latest(viewer)
     if page_number < 1 then return end
     local ratio = page_count > 1 and (page_number - 1) / (page_count - 1) or 0
     if ratio < 0 or ratio > 1 then return end
-    viewer.scroll_widget:scrollToRatio(ratio, true)
+    viewer_scroll_widget(viewer):scrollToRatio(ratio, true)
 end
 
 function KindleAnki:show_ai_conversation(card, revealed)
@@ -1271,8 +1350,8 @@ function KindleAnki:show_ai_conversation(card, revealed)
         show_menu = false,
         buttons_table = {
             {
-                { text = _("Previous page"), callback = function() viewer:onScrollOrNavigate(-1) end },
-                { text = _("Next page"), callback = function() viewer:onScrollOrNavigate(1) end },
+                { text = _("Previous page"), callback = function() scroll_viewer_page(viewer, -1) end },
+                { text = _("Next page"), callback = function() scroll_viewer_page(viewer, 1) end },
             },
             {
                 { text = _("Ask again"), callback = function() close_widget(viewer); self:open_ai_input(card, revealed) end },

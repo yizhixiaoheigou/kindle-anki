@@ -4,6 +4,10 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Fixed cards showing raw HTML (`<div style=…>`, `&#39;`) on KOReader older than
+  v2026.07, whose TextViewer cannot render HTML. Those builds now get plain
+  text, and card images open from a **View images** button. The AI chat
+  "Previous page"/"Next page" buttons no longer crash on those builds.
 - Added **Import via browser**: the plugin now opens a small LAN page
   (`http://<kindle-ip>:8767`) where a phone or computer browser converts an
   `.apkg` entirely in the browser and uploads the finished pack straight onto

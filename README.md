@@ -41,7 +41,8 @@ is your own decision and your own risk.
 
 ## Requirements
 
-- Jailbroken Kindle with KOReader.
+- Jailbroken Kindle with KOReader. v2026.07 or newer shows card images inline;
+  older builds show cards as plain text with a **View images** button.
 - A computer for conversion.
 - Same **home** Wi-Fi for import.
 

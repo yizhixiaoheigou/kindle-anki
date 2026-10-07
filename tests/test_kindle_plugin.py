@@ -98,6 +98,16 @@ class KindlePluginContractTests(unittest.TestCase):
         ):
             self.assertIn(token, main)
         self.assertNotIn("IMAGE_RIGHT_COLUMN_RATIO", main)
+        # KOReader before v2026.07 cannot render HTML in TextViewer.
+        for token in (
+            "TextViewer.html_text_formats",
+            "if not textviewer_renders_html() then",
+            "card_text_blocks",
+            'card_images_button(card, "front_images")',
+            'card_images_button(card, "back_images")',
+            'require("ui/widget/imageviewer")',
+        ):
+            self.assertIn(token, main)
         self.assertNotIn("<td style=", main)
         self.assertEqual(main.count("function KindleAnki:show_answer"), 1)
 
@@ -123,6 +133,10 @@ class KindlePluginContractTests(unittest.TestCase):
         self.assertIn('self:show_ai_conversation(card, revealed)', main)
         self.assertIn('self:open_ai_input(card, revealed)', main)
         self.assertIn('getCharPageTopLineNumber', main)
+        # Old KOReader has scroll_text_w and no onScrollOrNavigate.
+        self.assertIn('viewer.scroll_text_w', main)
+        self.assertIn('scroll_viewer_page(viewer, 1)', main)
+        self.assertNotIn('viewer:onScrollOrNavigate(1)', main)
         self.assertIn('scrollToRatio(ratio, true)', main)
 
     def test_pack_key_and_local_override_are_supported(self) -> None:
