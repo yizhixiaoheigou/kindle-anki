@@ -4,6 +4,10 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- 安全:卡包 zip 改用 KOReader 自带的 libarchive 读取器(`ffi/archiver`,KOReader 2025.08+)
+  解压:先检查全部文件名,只写普通文件,解压后总大小上限 1 GB。更早的 KOReader 仍用
+  `unzip`,但列不出文件名的 zip 会被拒绝,不再盲解。旧代码引用了不存在的模块(`ffi/archive`),
+  且在 `unzip -Z1` 不受支持时(如 busybox)对任何 zip 一律放行。
 - 安全:Kindle 导入页(`:8767`)上传必须是 `application/zip`,拒绝 `Host` 为公网域名的
   请求,拒绝 `Origin` 来自其他网站的写操作。此前用户浏览器里开着的任何网站都能用普通表单
   POST 往 Kindle 塞卡包,借助 DNS 重绑定还能列出和删除卡包。

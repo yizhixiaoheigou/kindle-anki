@@ -4,6 +4,13 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Security: pack zips are now unpacked with KOReader's own libarchive reader
+  (`ffi/archiver`, KOReader 2025.08+), which checks every name first, writes
+  only regular files, and caps the unpacked size at 1 GB. Older KOReader
+  still uses `unzip`, but a zip whose names cannot be listed is now refused
+  instead of extracted blind. The old code asked for a module that does not
+  exist (`ffi/archive`) and passed any zip when `unzip -Z1` was unsupported,
+  as on busybox.
 - Security: the Kindle import page (`:8767`) now requires uploads as
   `application/zip`, refuses requests whose `Host` is a public name, and
   refuses writes whose `Origin` is another site. Before this, any website

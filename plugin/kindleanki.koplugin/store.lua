@@ -151,25 +151,47 @@ local function find_pack_json(directory)
     return found
 end
 
-local function zip_entry_names_safe(zip_path)
-    -- Zip-slip guard: reject absolute paths, backslashes, and ".." segments
-    -- before anything is extracted.
-    local quoted_zip = zip_path:gsub('"', '\\"')
-    local handle = io.popen('unzip -Z1 "' .. quoted_zip .. '" 2>/dev/null')
-    if not handle then
-        return true -- listing unavailable; the post-extract symlink scrub still applies
+-- Unpacked-size cap for one pack zip, against zip bombs. Converted packs
+-- are card text plus images, far below this.
+local MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
+
+local function safe_zip_entry(name)
+    -- Zip-slip guard: no absolute paths, backslashes, or ".." anywhere.
+    return type(name) == "string" and name ~= "" and name:sub(1, 1) ~= "/"
+        and not name:find("\\", 1, true) and not name:find("%.%.")
+end
+
+local function shell_quote(value)
+    return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+-- Entry names from `unzip -l` output. Info-ZIP and busybox both print
+-- "length date time name" rows; busybox has no `-Z1`.
+local function zip_names_from_listing(text)
+    local names = {}
+    for line in tostring(text or ""):gmatch("[^\r\n]+") do
+        local name = line:match("^%s*%d+%s+%S+%s+%d+:%d+%s+(.+)$")
+        if name then table.insert(names, name) end
     end
-    local safe = true
-    for entry in handle:lines() do
-        local clean = entry:gsub("[\r\n]", "")
-        if clean ~= ""
-            and (clean:sub(1, 1) == "/" or clean:find("\\", 1, true) or clean:find("%.%."))
-        then
-            safe = false
+    return names
+end
+
+local function zip_listing(zip_path)
+    for _, command in ipairs({ "unzip -Z1 ", "unzip -l " }) do
+        local handle = io.popen(command .. shell_quote(zip_path) .. " 2>/dev/null")
+        if handle then
+            local text = handle:read("*a") or ""
+            handle:close()
+            local names = {}
+            if command == "unzip -Z1 " then
+                for line in text:gmatch("[^\r\n]+") do table.insert(names, line) end
+            else
+                names = zip_names_from_listing(text)
+            end
+            if #names > 0 then return names end
         end
     end
-    handle:close()
-    return safe
+    return nil
 end
 
 local function remove_symlinks(directory)
@@ -185,36 +207,65 @@ local function remove_symlinks(directory)
     end
 end
 
-local function extract_zip(zip_path, dest)
-    ensure_directory(dest)
-    if not zip_entry_names_safe(zip_path) then
+-- KOReader's libarchive reader (ffi/archiver, KOReader 2025.08+). Every
+-- name is checked before anything is written; only regular files are
+-- extracted, so links and devices never reach the disk.
+local function extract_with_archiver(Archiver, zip_path, dest)
+    local reader = Archiver.Reader:new()
+    if not reader:open(zip_path) then return false end
+    local total = 0
+    for entry in reader:iterate() do
+        if not safe_zip_entry(entry.path) then
+            reader:close()
+            return false
+        end
+        if entry.mode == "file" then
+            total = total + (tonumber(entry.size) or 0)
+            if total > MAX_UNPACKED_BYTES then
+                reader:close()
+                return false
+            end
+        end
+    end
+    if reader.err then
+        reader:close()
         return false
     end
-    local ok_mod, archive = pcall(require, "ffi/archive")
-    if ok_mod and type(archive) == "table" then
-        if type(archive.unpack) == "function" then
-            local ok = pcall(archive.unpack, archive, zip_path, dest)
-            if ok then
-                pcall(remove_symlinks, dest)
-                return true
-            end
-        end
-        if type(archive.extract) == "function" then
-            local ok = pcall(archive.extract, archive, zip_path, dest)
-            if ok then
-                pcall(remove_symlinks, dest)
-                return true
-            end
+    local ok = true
+    for entry in reader:iterate() do
+        if entry.mode == "file" and not reader:extractToPath(entry.path, dest .. "/" .. entry.path) then
+            ok = false
+            break
         end
     end
-    local quoted_zip = zip_path:gsub('"', '\\"')
-    local quoted_dest = dest:gsub('"', '\\"')
-    local status = os.execute('unzip -o "' .. quoted_zip .. '" -d "' .. quoted_dest .. '" >/dev/null 2>&1')
-    if status == 0 or status == true then
-        pcall(remove_symlinks, dest)
-        return true
+    if reader.err then ok = false end
+    reader:close()
+    return ok
+end
+
+-- Older KOReader: shell out to unzip. Refuse when the names cannot be
+-- listed, rather than extracting blind.
+local function extract_with_unzip(zip_path, dest)
+    local names = zip_listing(zip_path)
+    if not names then return false end
+    for _, name in ipairs(names) do
+        if not safe_zip_entry(name) then return false end
     end
-    return false
+    local status = os.execute("unzip -o " .. shell_quote(zip_path) .. " -d " .. shell_quote(dest) .. " >/dev/null 2>&1")
+    return status == 0 or status == true
+end
+
+local function extract_zip(zip_path, dest)
+    ensure_directory(dest)
+    local ok_mod, Archiver = pcall(require, "ffi/archiver")
+    local ok
+    if ok_mod and type(Archiver) == "table" and type(Archiver.Reader) == "table" then
+        ok = extract_with_archiver(Archiver, zip_path, dest)
+    else
+        ok = extract_with_unzip(zip_path, dest)
+    end
+    if ok then pcall(remove_symlinks, dest) end
+    return ok
 end
 
 local function validate_image_refs(card, field)
@@ -936,5 +987,9 @@ Store.DEFAULT_DAILY_NEW = DEFAULT_DAILY_NEW
 Store.MIN_DAILY_NEW = MIN_DAILY_NEW
 Store.MAX_DAILY_NEW = MAX_DAILY_NEW
 Store.AI_MAX_TOTAL_BYTES = AI_MAX_TOTAL_BYTES
+
+-- Test hooks for the zip guards.
+Store._extract_zip = extract_zip
+Store._zip_names_from_listing = zip_names_from_listing
 
 return Store
