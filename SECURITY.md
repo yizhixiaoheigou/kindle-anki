@@ -30,6 +30,11 @@
   shares the unauthenticated posture: anyone on the LAN can delete a pack
   (with its progress and AI chats). Names must resolve to a pack the store
   lists; path traversal never reaches the store.
+- AI requests to an `https://` endpoint are encrypted, but the server
+  certificate is not verified: KOReader's TLS library defaults to no
+  verification and ships no CA bundle. On a network you do not trust, a
+  man-in-the-middle could read the API key. Use AI on trusted Wi-Fi, and use
+  a key you can revoke.
 - Pack JSON and zips are plaintext study material.
 
 Report issues privately to the repository owner. Do not file packs or keys in
