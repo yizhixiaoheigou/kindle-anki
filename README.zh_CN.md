@@ -41,6 +41,7 @@ Kindle 上的效果：
 - 越狱 Kindle + KOReader。v2026.07 及以上版本在卡片里直接显示图片；更早的版本
   以纯文本显示卡片，图片用「查看图片」按钮打开。
 - 一部手机或电脑（浏览器里就能转换，不需要装任何东西）。
+- 导入时与 Kindle 连同一个**家里的** Wi-Fi。
 
 免安装的转换器是本机构建的未签名应用（macOS universal2 `.app` 和 Windows
 onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有现成

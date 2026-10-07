@@ -43,7 +43,7 @@ is your own decision and your own risk.
 
 - Jailbroken Kindle with KOReader. v2026.07 or newer shows card images inline;
   older builds show cards as plain text with a **View images** button.
-- A computer for conversion.
+- A phone or computer for conversion (the browser page needs no install).
 - Same **home** Wi-Fi for import.
 
 Prebuilt converter apps are unsigned local builds (a macOS universal2 `.app`
