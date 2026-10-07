@@ -38,6 +38,20 @@ WebServer.HEAD_TIMEOUT = 15
 -- stopping and reopening the page on the Kindle issues a fresh code.
 WebServer.MAX_AI_ATTEMPTS = 5
 
+-- Upload bodies must carry one of these types. A cross-site page can only
+-- send text/plain, form, or multipart bodies without a CORS preflight, so
+-- requiring a zip type keeps other websites from pushing packs here.
+local UPLOAD_CONTENT_TYPES = {
+    ["application/zip"] = true,
+    ["application/x-zip-compressed"] = true,
+    ["application/octet-stream"] = true,
+}
+
+-- Suffixes a home router or mDNS hands out. DNS rebinding needs a public
+-- name the attacker controls, so public names are refused while IPs,
+-- single-label names, and these local suffixes keep working.
+local LOCAL_NAME_SUFFIXES = { ".local", ".lan", ".home", ".internal", ".home.arpa" }
+
 local STATIC_FILES = {
     ["/"] = { file = "index.html", type = "text/html; charset=utf-8" },
     ["/index.html"] = { file = "index.html", type = "text/html; charset=utf-8" },
@@ -151,6 +165,29 @@ local function detect_ip()
         end
     end
     return nil
+end
+
+local function host_name(value)
+    -- "192.168.1.5:8767" -> "192.168.1.5"; "[fe80::1]:8767" -> "fe80::1".
+    local text = tostring(value or ""):lower()
+    local bracketed = text:match("^%[([^%]]*)%]")
+    if bracketed then return bracketed end
+    return (text:gsub(":%d*$", ""))
+end
+
+local function is_local_host(value)
+    local name = host_name(value)
+    if name == "" then return false end
+    if name:match("^%d+%.%d+%.%d+%.%d+$") or name:find(":", 1, true) then return true end
+    if not name:find(".", 1, true) then return true end
+    for _, suffix in ipairs(LOCAL_NAME_SUFFIXES) do
+        if name:sub(-#suffix) == suffix then return true end
+    end
+    return false
+end
+
+local function origin_host(origin)
+    return origin:match("^%a[%w+.-]*://([^/]+)")
 end
 
 local function url_decode(value, plus_is_space)
@@ -715,10 +752,31 @@ function WebServer:handle_upload(client, name)
     return self:send_json(client, 200, result)
 end
 
+function WebServer:request_refusal(request)
+    -- Returns status and message for a request that must not be served.
+    local host = request.headers["host"]
+    if host ~= nil and not is_local_host(host) then
+        -- A public Host header means a DNS-rebinding page is talking to us
+        -- under its own origin; serve nothing to it.
+        return 403, "this page only answers on the Kindle's local address"
+    end
+    if request.method ~= "GET" then
+        local origin = request.headers["origin"]
+        if origin ~= nil and (origin_host(origin) or ""):lower() ~= tostring(host or ""):lower() then
+            return 403, "requests from other websites are refused"
+        end
+    end
+    return nil
+end
+
 function WebServer:dispatch(client, request)
     local method = request.method
     if method ~= "GET" and method ~= "POST" and method ~= "DELETE" then
         return self:send_json(client, 405, { ok = false, error = "method not allowed" })
+    end
+    local refused_status, refusal = self:request_refusal(request)
+    if refused_status then
+        return self:send_json(client, refused_status, { ok = false, error = refusal })
     end
     if method == "GET" then
         local static = STATIC_FILES[request.path]
@@ -749,6 +807,10 @@ function WebServer:dispatch(client, request)
     elseif method == "POST" and request.path == "/api/packs" then
         local name, refusal = self:upload_name(request)
         if not name then return self:send_json(client, 400, refusal) end
+        local content_type = (request.headers["content-type"] or ""):lower():match("^%s*([^;%s]+)")
+        if not UPLOAD_CONTENT_TYPES[content_type or ""] then
+            return self:send_json(client, 415, { ok = false, error = "send the pack as application/zip" })
+        end
         if not self:receive_body(client, request) then return end
         return self:handle_upload(client, name)
     elseif method == "POST" and request.path == "/api/ai-settings" then
@@ -766,5 +828,6 @@ function WebServer:handle(client)
 end
 
 WebServer.detect_ip = detect_ip
+WebServer.is_local_host = is_local_host
 
 return WebServer

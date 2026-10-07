@@ -4,6 +4,11 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Security: the Kindle import page (`:8767`) now requires uploads as
+  `application/zip`, refuses requests whose `Host` is a public name, and
+  refuses writes whose `Origin` is another site. Before this, any website
+  the user had open could push packs onto the Kindle with a plain form POST,
+  and a DNS-rebinding page could list and delete packs.
 - Fixed: the plugin now refuses packs whose choice cards have non-integer,
   out-of-range, or duplicate `correct_indices`, non-text options, or non-text
   `expected_answers`, matching the converter's own rules. Such a pack used

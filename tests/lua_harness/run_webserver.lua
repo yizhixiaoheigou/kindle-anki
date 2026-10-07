@@ -691,12 +691,55 @@ do
     local stalled = connect()
     stalled:settimeout(0)
     assert(stalled:send("POST /api/packs?name=gone.zip HTTP/1.1\r\nHost: kindle\r\n" ..
-        "Content-Length: 4096\r\n\r\nonly-some-bytes"))
+        "Content-Type: application/zip\r\nContent-Length: 4096\r\n\r\nonly-some-bytes"))
     pump_until(function() return server.upload_conn ~= nil end, 5)
     stalled:close()
     pump_until(function() return server.upload_conn == nil end, 5)
     check("abandoned upload removes its temp file",
         io.open(upload_dir .. "/.upload.kindle-anki.zip", "rb") == nil)
+end
+
+-- Cross-site and DNS-rebinding guards.
+local function status_of(request)
+    local client = connect()
+    client:settimeout(5)
+    assert(client:send(request))
+    client:settimeout(0)
+    local head = drive(client)
+    client:close()
+    reap()
+    return tonumber(head:match("^HTTP/1%.1 (%d+)"))
+end
+
+check("upload as text/plain is 415 (no cross-site simple POST)", status_of(
+    "POST /api/packs?name=x.zip HTTP/1.1\r\nHost: kindle\r\n" ..
+    "Content-Type: text/plain\r\nContent-Length: 4\r\n\r\nzzzz") == 415)
+check("upload as a form is 415", status_of(
+    "POST /api/packs?name=x.zip HTTP/1.1\r\nHost: kindle\r\n" ..
+    "Content-Type: multipart/form-data; boundary=x\r\nContent-Length: 4\r\n\r\nzzzz") == 415)
+check("upload without a content type is 415", status_of(
+    "POST /api/packs?name=x.zip HTTP/1.1\r\nHost: kindle\r\nContent-Length: 4\r\n\r\nzzzz") == 415)
+check("rebinding host is refused on reads", status_of(
+    "GET /api/packs HTTP/1.1\r\nHost: evil.example.com:8767\r\n\r\n") == 403)
+check("rebinding host is refused on deletes", status_of(
+    "DELETE /api/packs?name=x.json HTTP/1.1\r\nHost: evil.example.com:8767\r\n\r\n") == 403)
+check("cross-site origin is refused on deletes", status_of(
+    "DELETE /api/packs?name=missing.json HTTP/1.1\r\nHost: 192.168.1.5:8767\r\n" ..
+    "Origin: https://evil.example.com\r\n\r\n") == 403)
+check("null origin is refused on posts", status_of(
+    "POST /api/ai-settings?code=0000 HTTP/1.1\r\nHost: 192.168.1.5:8767\r\n" ..
+    "Origin: null\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}") == 403)
+check("same-origin delete still reaches the store", status_of(
+    "DELETE /api/packs?name=missing.json HTTP/1.1\r\nHost: 192.168.1.5:8767\r\n" ..
+    "Origin: http://192.168.1.5:8767\r\n\r\n") == 404)
+check("ip host serves the page", status_of("GET / HTTP/1.1\r\nHost: 192.168.1.5:8767\r\n\r\n") == 200)
+
+for host, expected in pairs({
+    ["192.168.1.5:8767"] = true, ["[fe80::1]:8767"] = true, ["kindle"] = true,
+    ["kindle.local:8767"] = true, ["kindle.lan"] = true, ["router.home.arpa"] = true,
+    ["evil.example.com"] = false, ["192.168.1.5.nip.io:8767"] = false, [""] = false,
+}) do
+    check("is_local_host(" .. host .. ")", WebServer.is_local_host(host) == expected)
 end
 
 server:stop()

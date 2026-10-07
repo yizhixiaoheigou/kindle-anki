@@ -4,6 +4,9 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- 安全:Kindle 导入页(`:8767`)上传必须是 `application/zip`,拒绝 `Host` 为公网域名的
+  请求,拒绝 `Origin` 来自其他网站的写操作。此前用户浏览器里开着的任何网站都能用普通表单
+  POST 往 Kindle 塞卡包,借助 DNS 重绑定还能列出和删除卡包。
 - 修复:插件现在会拒收选择题 `correct_indices` 非整数、越界或重复,选项不是文本,
   或 `expected_answers` 不是文本的卡包,与转换器自身的规则一致。此前这类卡包能导入,
   翻到答案时会让 KOReader 崩溃。
