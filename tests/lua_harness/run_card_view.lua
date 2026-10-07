@@ -338,6 +338,22 @@ end
 -- Navigation screens
 -- ------------------------------------------------------------------
 
+do
+    -- Manage packs used to crash: its loop shadowed the `_` translator.
+    TextViewer.html_text_formats = NEW_TEXTVIEWER_FORMATS
+    plugin = new_plugin(short_card)
+    plugin.library = { plugin.pack }
+    shown = {}
+    local ok, err = pcall(function() plugin:open_pack_manager() end)
+    check("manage packs opens", ok or print("  " .. tostring(err)))
+    local manager
+    for index = #shown, 1, -1 do
+        if shown[index]._class == Menu then manager = shown[index] break end
+    end
+    check("manage packs lists packs with a delete label", manager ~= nil
+        and manager.item_table[1].mandatory == "删除" and manager.title_bar_left_icon == "chevron.left")
+end
+
 local function last_of(class)
     for index = #shown, 1, -1 do
         if shown[index]._class == class then return shown[index] end

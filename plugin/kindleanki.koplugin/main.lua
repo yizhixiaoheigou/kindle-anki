@@ -373,7 +373,8 @@ function KindleAnki:open_pack_manager()
         return
     end
     local items = {}
-    for _, pack in ipairs(self.packs) do
+    -- Not `for _, pack`: that would shadow the translation function `_`.
+    for _index, pack in ipairs(self.packs) do
         local current_pack = pack
         table.insert(items, {
             text = current_pack.title,

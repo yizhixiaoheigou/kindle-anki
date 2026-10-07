@@ -240,7 +240,7 @@ function AI.build_messages(config, card, history, question, revealed, image_path
     local context = card_context(card, true)
     local context_content = { { type = "text", text = context } }
     local total_image_bytes = 0
-    for _, path in ipairs(image_paths or {}) do
+    for _index, path in ipairs(image_paths or {}) do
         local image, size_or_error = image_part(path)
         if not image then return nil, size_or_error end
         total_image_bytes = total_image_bytes + size_or_error

@@ -62,6 +62,25 @@ class KindlePluginContractTests(unittest.TestCase):
         self.assertIn("Formal order for prompt-prefix caching", ai)
         self.assertIn('content = trim(question)', ai)
 
+    def test_no_loop_shadows_the_translation_function(self) -> None:
+        # `for _, x in ...` rebinds `_`; calling _("...") inside that loop
+        # then calls a number and crashes KOReader (Manage packs did).
+        import re
+        for name in ("main.lua", "ai.lua", "store.lua"):
+            lines = self.read(name).splitlines()
+            for start, line in enumerate(lines):
+                match = re.match(r"^(\s*)for _,.*\bdo\b(.*)$", line)
+                if not match:
+                    continue
+                if re.search(r"\bend\s*$", match.group(2)):
+                    self.assertNotRegex(match.group(2), r"(?<![\w.])_\(", f"{name}:{start + 1}")
+                    continue
+                indent = len(match.group(1))
+                for offset, body in enumerate(lines[start + 1:], start + 2):
+                    if re.match(r"^\s{%d}end\b" % indent, body):
+                        break
+                    self.assertNotRegex(body, r"(?<![\w.])_\(", f"{name}:{offset} calls _() inside a for-_ loop")
+
     def test_ai_transcript_does_not_shadow_translation_function(self) -> None:
         main = self.read("main.lua")
         self.assertNotIn("for _, message in ipairs(self.ai_history", main)
