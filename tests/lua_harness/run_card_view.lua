@@ -284,6 +284,41 @@ for _, build in ipairs({ "new", "old" }) do
     check(build .. ": AI paging works", ok_next and ok_prev and pages[1] == 1 and pages[2] == -1)
 end
 
+-- ------------------------------------------------------------------
+-- Language switch
+-- ------------------------------------------------------------------
+
+do
+    local I18N = require("i18n")
+    local saved = {}
+    plugin = new_plugin(short_card)
+    plugin.settings = {
+        readSetting = function(_, key, default) if saved[key] ~= nil then return saved[key] end return default end,
+        saveSetting = function(settings, key, value) saved[key] = value return settings end,
+        flush = function() end,
+    }
+    local menu = {}
+    plugin:addToMainMenu(menu)
+    local language
+    for _, item in ipairs(menu.kindle_anki.sub_item_table) do
+        if item.text == "Language / 语言" then language = item end
+    end
+    check("menu has a bilingual language entry", language ~= nil)
+    if language then
+        local english = language.sub_item_table[2]
+        check("Chinese is checked by default", language.sub_item_table[1].checked_func() and not english.checked_func())
+        english.callback()
+        check("switching saves the locale", saved.locale == "en" and english.checked_func())
+        TextViewer.html_text_formats = nil
+        plugin:show_card()
+        check("progress follows the language", last_viewer().text:find("Card 1 / 1", 1, true) ~= nil)
+        language.sub_item_table[1].callback()
+        plugin:show_card()
+        check("switching back restores Chinese", last_viewer().text:find("第 1 / 1 张", 1, true) ~= nil)
+    end
+    I18N.set_locale("zh_CN")
+end
+
 if failures > 0 then
     print(failures .. " FAILED")
     os.exit(1)

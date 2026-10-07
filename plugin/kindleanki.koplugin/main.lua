@@ -147,7 +147,33 @@ function KindleAnki:addToMainMenu(menu_items)
                 text = _("Manage packs"),
                 callback = function() self:open_pack_manager() end,
             },
+            {
+                -- Bilingual on purpose: a reader who cannot read the
+                -- current language still has to find the switch.
+                text = "Language / 语言",
+                sub_item_table = {
+                    self:language_menu_item("zh_CN", "简体中文"),
+                    self:language_menu_item("en", "English"),
+                },
+            },
         },
+    }
+end
+
+function KindleAnki:language_menu_item(locale, label)
+    return {
+        text = label,
+        radio = true,
+        checked_func = function()
+            return self.settings:readSetting("locale", "zh_CN") == locale
+        end,
+        callback = function()
+            self.settings:saveSetting("locale", locale):flush()
+            I18N.set_locale(locale)
+            UIManager:show(InfoMessage:new{
+                text = _("Language changed. Menus already open update after you reopen them."),
+            })
+        end,
     }
 end
 
@@ -802,7 +828,7 @@ function KindleAnki:begin_deck(deck)
 end
 
 function KindleAnki:card_progress()
-    return string.format("第 %d / %d 张", self.card_position, #self.cards)
+    return string.format(_("Card %d / %d"), self.card_position, #self.cards)
 end
 
 local IMAGE_MAX_WIDTH_RATIO = 0.90

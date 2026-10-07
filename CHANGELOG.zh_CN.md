@@ -4,6 +4,9 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- 修复:学习日改为按 Kindle 本地时间零点翻页。此前按 UTC 计算,在中国每日新卡额度在早上
+  8 点才重置,深夜复习会被算进第二天。
+- 插件菜单新增「Language / 语言」(简体中文 / English),卡片进度行也随之切换。
 - Kindle 导入页在无人连接时改为每秒轮询 2 次(原来全天每秒 20 次),30 分钟无人访问
   自动关闭,不再持续耗电,也不会在局域网上一开好几天。
 - 安全:卡包 zip 改用 KOReader 自带的 libarchive 读取器(`ffi/archiver`,KOReader 2025.08+)

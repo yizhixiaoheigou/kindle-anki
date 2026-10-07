@@ -106,7 +106,11 @@ To remove a pack: **Tools → More tools → Kindle Anki → Manage packs**, or 
 choose **Delete this pack**. Progress and AI chats for that pack go with it.
 
 Daily new-card count is set on the Kindle the first time you open the pack, not
-during conversion.
+during conversion. The study day, and with it the daily count and due dates,
+turns over at the Kindle's local midnight.
+
+The plugin starts in Simplified Chinese. Switch with **Tools → More tools →
+Kindle Anki → Language / 语言**.
 
 ## 4. Study and optional AI
 

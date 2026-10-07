@@ -14,9 +14,23 @@ local function clamp_interval(value)
     return math.floor(value)
 end
 
-function Schedule.today()
-    -- Local civil day number since Unix epoch (UTC-based day index is fine for V1).
-    return math.floor(os.time() / 86400)
+-- Seconds east of UTC for the device's time zone at `now` (0 when the
+-- Kindle has no zone set). Both tables are read back as local time, so
+-- their difference is the offset; copying isdst keeps DST out of it.
+function Schedule.utc_offset(now)
+    now = now or os.time()
+    local local_fields = os.date("*t", now)
+    local utc_fields = os.date("!*t", now)
+    utc_fields.isdst = local_fields.isdst
+    return os.difftime(os.time(local_fields), os.time(utc_fields))
+end
+
+-- Local civil day number since the Unix epoch. A UTC day index would
+-- start the study day at 08:00 in China, so daily limits and due dates
+-- follow the device's own midnight instead.
+function Schedule.today(now)
+    now = now or os.time()
+    return math.floor((now + Schedule.utc_offset(now)) / 86400)
 end
 
 function Schedule.default_state()

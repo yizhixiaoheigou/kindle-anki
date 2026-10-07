@@ -4,6 +4,11 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Fixed: the study day now turns over at the Kindle's local midnight. It used
+  the UTC day, so in China the daily new-card count reset at 08:00 and late
+  evening reviews counted toward the next morning.
+- Added **Language / 语言** to the plugin menu (Simplified Chinese or
+  English). The card progress line now follows it too.
 - The Kindle import page now polls twice a second while nobody is connected
   (was 20 times a second around the clock) and closes itself after 30
   minutes without visits, so it no longer drains the battery or stays open

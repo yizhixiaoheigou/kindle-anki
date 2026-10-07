@@ -58,6 +58,9 @@ local catalogs = {
         ["Type answer"] = "输入答案",
         ["AI explain"] = "AI 解析",
         ["Exit deck"] = "退出牌组",
+        ["Card %d / %d"] = "第 %d / %d 张",
+        ["Language changed. Menus already open update after you reopen them."] =
+            "语言已切换。已经打开的菜单需要重新打开才会更新。",
         ["View images (%d)"] = "查看图片（%d）",
         ["Image files are missing from this pack."] = "卡包里缺少图片文件。",
         ["Type your answer"] = "输入你的答案",
