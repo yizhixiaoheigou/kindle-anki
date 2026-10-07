@@ -24,7 +24,7 @@ python3 tools/kindle_anki_importer.py --help   # CLI converter
 ```
 
 - The UI tests import `tkinter` at module level, so use a Python that has Tcl/Tk.
-- `test_kindle_web_converter.py` needs `node`. `test_kindle_webserver_lua.py` needs `lua`/`luajit` with luasocket. Each **skips silently** when its tool is missing, so a green run without them has not covered the browser converter or the Kindle web server.
+- `test_kindle_web_converter.py` needs `node`. The `test_kindle_*_lua.py` files need `lua`/`luajit` (the web server one also needs luasocket). Each **skips silently** when its tool is missing, so a green run without them has not covered the browser converter or the plugin's Lua. Set `KINDLE_ANKI_REQUIRE_TOOLS=1` to make a missing tool fail instead; CI sets it and installs Lua 5.4, luasocket, and node.
 - The maintainer's Linux VM has no `tkinter` or `lua`. Run the full suite on the Mac with `mac-run python3 -m unittest discover -s tests -p 'test_kindle_*.py'`, which has Tk, `lua`, and `node`, so nothing skips.
 - CI fails if `tools/anki_importer.py` or `tools/folo_*.py` exists.
 - `requirements-dev.txt` (PyInstaller, Pillow) is for packaging only. Build steps are in `packaging/README.md`. `.venv`/`.venv-x86_64` are macOS build venvs.

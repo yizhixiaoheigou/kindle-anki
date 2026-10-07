@@ -5,6 +5,7 @@ Drives webserver.lua through a real luasocket server with KOReader modules
 stubbed out. Skips when no Lua interpreter is available.
 """
 
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -15,10 +16,17 @@ ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "tests" / "lua_harness" / "run_webserver.lua"
 
 LUA = shutil.which("lua") or shutil.which("luajit")
+# CI sets KINDLE_ANKI_REQUIRE_TOOLS=1 so a missing interpreter fails the run
+# instead of skipping these tests silently.
+REQUIRE_TOOLS = os.environ.get("KINDLE_ANKI_REQUIRE_TOOLS") == "1"
 
 
-@unittest.skipIf(LUA is None, "lua is not available")
+
+@unittest.skipIf(LUA is None and not REQUIRE_TOOLS, "lua is not available")
 class WebServerLuaSmokeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.assertIsNotNone(LUA, "lua is required when KINDLE_ANKI_REQUIRE_TOOLS=1")
+
     def test_webserver_end_to_end(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-web-lua-") as temp:
             blob = Path(temp) / "blob.bin"

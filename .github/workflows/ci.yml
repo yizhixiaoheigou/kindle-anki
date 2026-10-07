@@ -17,8 +17,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Lua runs the plugin harnesses (import page, card view, pack
+      # validation, zip guards, study day); luasocket is for the import page.
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends lua5.4 lua-socket unzip
       - name: Kindle host tests
+        env:
+          # Fail, rather than skip, any test whose lua/node/unzip is missing.
+          KINDLE_ANKI_REQUIRE_TOOLS: "1"
         run: |
+          lua -v && lua -e 'require("socket")' && node --version
           if [ -e tools/anki_importer.py ] || ls tools/folo_*.py >/dev/null 2>&1; then
             echo "firmware Python helpers must not be in this tree" >&2
             exit 1

@@ -24,7 +24,7 @@ python3 tools/kindle_anki_importer.py --help   # 命令行转换器
 ```
 
 - UI 测试在模块顶层 import `tkinter`，要用带 Tcl/Tk 的 Python。
-- `test_kindle_web_converter.py` 需要 `node`，`test_kindle_webserver_lua.py` 需要带 luasocket 的 `lua`/`luajit`。缺少对应工具时会**静默跳过**，所以没有这些工具时全绿，并不代表浏览器转换器和 Kindle 端 Web 服务已被覆盖。
+- `test_kindle_web_converter.py` 需要 `node`，各个 `test_kindle_*_lua.py` 需要 `lua`/`luajit`（Web 服务那个还需要 luasocket）。缺少对应工具时会**静默跳过**，所以没有这些工具时全绿，并不代表浏览器转换器和插件的 Lua 代码已被覆盖。设置 `KINDLE_ANKI_REQUIRE_TOOLS=1` 可让缺工具直接失败；CI 已设置该变量，并安装 Lua 5.4、luasocket 和 node。
 - 维护者的 Linux VM 没有 `tkinter` 和 `lua`。全量测试请在 Mac 上跑：`mac-run python3 -m unittest discover -s tests -p 'test_kindle_*.py'`。Mac 上有 Tk、`lua`、`node`，不会有跳过。
 - 如果存在 `tools/anki_importer.py` 或 `tools/folo_*.py`，CI 会直接失败。
 - `requirements-dev.txt`（PyInstaller、Pillow）只用于打包，构建步骤见 `packaging/README.md`。`.venv`/`.venv-x86_64` 是 macOS 构建用的虚拟环境。

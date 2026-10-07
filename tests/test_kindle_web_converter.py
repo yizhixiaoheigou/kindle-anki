@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 import shutil
 import sqlite3
@@ -30,6 +31,10 @@ from kindle_anki_importer import import_apkg, inspect_apkg  # noqa: E402
 from kindle_bundle import write_kindle_bundle  # noqa: E402
 
 NODE = shutil.which("node")
+# CI sets KINDLE_ANKI_REQUIRE_TOOLS=1 so a missing interpreter fails the run
+# instead of skipping these tests silently.
+REQUIRE_TOOLS = os.environ.get("KINDLE_ANKI_REQUIRE_TOOLS") == "1"
+
 RUNNER = ROOT / "tests" / "node" / "run_converter.js"
 WEB_DIR = ROOT / "plugin" / "kindleanki.koplugin" / "web"
 
@@ -106,8 +111,11 @@ def _write_apkg(path: Path, models: dict, decks: dict, notes: list[tuple], cards
                 archive.writestr(entry_name, payload)
 
 
-@unittest.skipIf(NODE is None, "node is not available")
+@unittest.skipIf(NODE is None and not REQUIRE_TOOLS, "node is not available")
 class WebConverterConformance(unittest.TestCase):
+    def setUp(self) -> None:
+        self.assertIsNotNone(NODE, "node is required when KINDLE_ANKI_REQUIRE_TOOLS=1")
+
     def test_package_matches_python(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-web-") as temp:
             apkg = Path(temp) / "demo.apkg"
@@ -333,9 +341,12 @@ class WebConverterConformance(unittest.TestCase):
         self.assertIn("the Kindle importer accepts an .apkg file", result.stderr)
 
 
-@unittest.skipIf(NODE is None, "node is not available")
+@unittest.skipIf(NODE is None and not REQUIRE_TOOLS, "node is not available")
 class WebConverterUnit(unittest.TestCase):
     """Direct checks of the JS-side pieces the conformance fixtures miss."""
+
+    def setUp(self) -> None:
+        self.assertIsNotNone(NODE, "node is required when KINDLE_ANKI_REQUIRE_TOOLS=1")
 
     def test_safe_stem_matches_python(self) -> None:
         from kindle_bundle import safe_stem as python_safe_stem
