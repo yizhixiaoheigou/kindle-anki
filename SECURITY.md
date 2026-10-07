@@ -8,6 +8,12 @@
   Store keys only in KOReader plugin settings.
 - The LAN pack server binds `0.0.0.0:8766` with no authentication. Use home
   Wi-Fi only. Anyone on that LAN can download converted decks.
+- `GET /ai-settings` on `:8766` hands the converter's AI settings, API key
+  included, to whoever sends the 4-digit pairing code shown in the converter
+  window. After 5 wrong codes it refuses every request until the AI settings
+  are saved again, which issues a new code. **Remember on this computer**
+  stores the settings, key included, in plain text at
+  `~/.kindle-anki/ai-settings.json`, readable by your user only (0600).
 - The Kindle-side browser-import page binds `0.0.0.0:8767` with no
   authentication. Same home-Wi-Fi rule; anyone on that LAN can upload a pack
   onto the Kindle or read its pack list. It rejects raw `.apkg` uploads —

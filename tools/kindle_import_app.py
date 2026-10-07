@@ -5,8 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 import queue
-import random
 import sys
 import threading
 import traceback
@@ -40,7 +40,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from kindle_anki_importer import import_apkg, inspect_apkg  # noqa: E402
 from kindle_bundle import write_kindle_bundle  # noqa: E402
-from kindle_pack_server import PACK_PORT, is_lan_ip, lan_ip, start_pack_server  # noqa: E402
+from kindle_pack_server import (  # noqa: E402
+    PACK_PORT,
+    is_lan_ip,
+    lan_ip,
+    new_pairing_code,
+    set_pairing_code,
+    start_pack_server,
+)
 
 try:
     import tkinter as tk
@@ -56,6 +63,18 @@ def _hairline(parent: tk.Misc) -> tk.Frame:
     return line
 
 
+def write_private_json(path: Path, data: dict) -> None:
+    """Write `data` readable by the owner only; it holds the API key in plain text."""
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    # Create with 0600 so the key is never briefly world-readable, then
+    # tighten an older file that was written with the default umask.
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    os.chmod(path, 0o600)
+
+
 class ConverterApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -65,7 +84,7 @@ class ConverterApp(tk.Tk):
         apply_style(self)
         self.apkg_path: Path | None = None
         self.output_dir = Path.home() / "Desktop"
-        self.ai_code = f"{random.randint(0, 9999):04d}"
+        self.ai_code = new_pairing_code()
         self.ai_config = self._load_ai_config()
         self.inspect = None
         self.pack_httpd = None
@@ -535,7 +554,7 @@ class ConverterApp(tk.Tk):
         if self.pack_httpd is None:
             try:
                 self.pack_httpd, self.pack_holder = start_pack_server(self.output_dir)
-                self.pack_holder["ai_code"] = self.ai_code
+                set_pairing_code(self.pack_holder, self.ai_code)
                 self.pack_holder["ai_config"] = self.ai_config or None
                 threading.Thread(target=self.pack_httpd.serve_forever, daemon=True).start()
             except OSError as exc:
@@ -633,13 +652,14 @@ class ConverterApp(tk.Tk):
         def save() -> None:
             config = {key: values[key].get().strip() for key, _ in fields}
             self.ai_config = config
+            # Every save issues a fresh code; this is also how the user
+            # unlocks pairing after too many wrong codes.
+            self.ai_code = new_pairing_code()
             if self.pack_holder is not None:
                 self.pack_holder["ai_config"] = config
-                self.pack_holder["ai_code"] = self.ai_code
+                set_pairing_code(self.pack_holder, self.ai_code)
             if remember.get():
-                path = self._ai_config_path()
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+                write_private_json(self._ai_config_path(), config)
             else:
                 try:
                     self._ai_config_path().unlink()

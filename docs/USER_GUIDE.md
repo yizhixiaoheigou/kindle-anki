@@ -120,6 +120,7 @@ unencrypted. To skip typing on the Kindle: click **AI settings** in the converte
 your config, then use **Import AI settings from computer** on the Kindle with the
 4-digit pairing code shown in the converter window — or paste the same fields
 into the **browser import page** (section 3) together with the pairing code
-shown in the Kindle dialog.
+shown in the Kindle dialog. After 5 wrong codes the converter stops handing
+out the settings; click **Save** in its AI settings again for a new code.
 
 Not official Anki. Not AnkiWeb-compatible.

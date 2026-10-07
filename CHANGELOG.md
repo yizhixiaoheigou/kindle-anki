@@ -4,6 +4,14 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- Security: the converter's `/ai-settings` endpoint (`:8766`) now locks after
+  5 wrong pairing codes; saving the AI settings again issues a new code. The
+  code comes from `secrets` instead of `random`. Before this, the 4-digit code
+  could be brute-forced from the LAN in about a second, leaking the API key.
+- Security: **Remember on this computer** now writes
+  `~/.kindle-anki/ai-settings.json` as 0600 and tightens an existing file.
+  Note that 0.1.0 said the key is stored only on the Kindle; with this option
+  on, it is also stored in plain text on the computer.
 - Fixed cards showing raw HTML (`<div style=…>`, `&#39;`) on KOReader older than
   v2026.07, whose TextViewer cannot render HTML. Those builds now get plain
   text, and card images open from a **View images** button. The AI chat

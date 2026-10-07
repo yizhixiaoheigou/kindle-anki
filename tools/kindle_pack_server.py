@@ -8,14 +8,33 @@ http://<computer>:8766/packs and downloads a .kindle-anki.zip.
 from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import hmac
 import json
 from pathlib import Path
+import secrets
 import socket
 import subprocess
+import threading
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 PACK_PORT = 8766
+# Wrong pairing codes allowed per code. The code is 4 digits, so an
+# unlimited /ai-settings falls to a LAN brute force in about a second and
+# hands out the API key; once locked, saving the AI settings again in the
+# converter issues a fresh code.
+MAX_AI_ATTEMPTS = 5
+
+
+def new_pairing_code() -> str:
+    return f"{secrets.randbelow(10000):04d}"
+
+
+def set_pairing_code(holder: dict[str, Any], code: str) -> None:
+    """Install a new pairing code and clear the wrong-code counter."""
+    with holder["ai_lock"]:
+        holder["ai_code"] = code
+        holder["ai_failures"] = 0
 
 
 def is_lan_ip(ip: str) -> bool:
@@ -90,7 +109,7 @@ def safe_zip_name(name: str) -> str | None:
     return None
 
 
-def make_handler(root_holder: dict[str, Path]):
+def make_handler(root_holder: dict[str, Any]):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
             return
@@ -122,11 +141,20 @@ def make_handler(root_holder: dict[str, Path]):
             if path == "/ai-settings":
                 query = parse_qs(parsed.query)
                 code = (query.get("code") or [""])[0]
-                expected = str(root_holder.get("ai_code") or "")
-                config = root_holder.get("ai_config")
-                if not expected or not config or code != expected:
-                    self._send(403, b"invalid pairing code", "text/plain")
-                    return
+                with root_holder["ai_lock"]:
+                    expected = str(root_holder.get("ai_code") or "")
+                    config = root_holder.get("ai_config")
+                    if not expected or not config:
+                        self._send(403, b"invalid pairing code", "text/plain")
+                        return
+                    if root_holder.get("ai_failures", 0) >= MAX_AI_ATTEMPTS:
+                        self._send(429, b"too many wrong pairing codes; save the AI settings "
+                                   b"in the converter again for a new code", "text/plain")
+                        return
+                    if not hmac.compare_digest(code.encode("utf-8"), expected.encode("utf-8")):
+                        root_holder["ai_failures"] = root_holder.get("ai_failures", 0) + 1
+                        self._send(403, b"invalid pairing code", "text/plain")
+                        return
                 body = json.dumps(config, ensure_ascii=False).encode("utf-8")
                 self._send(200, body, "application/json; charset=utf-8")
                 return
@@ -169,8 +197,8 @@ def make_handler(root_holder: dict[str, Path]):
     return Handler
 
 
-def start_pack_server(root: Path, port: int = PACK_PORT) -> tuple[ThreadingHTTPServer, dict[str, Path]]:
-    holder = {"root": Path(root)}
+def start_pack_server(root: Path, port: int = PACK_PORT) -> tuple[ThreadingHTTPServer, dict[str, Any]]:
+    holder: dict[str, Any] = {"root": Path(root), "ai_lock": threading.Lock(), "ai_failures": 0}
     server = ThreadingHTTPServer(("0.0.0.0", port), make_handler(holder))
     server.daemon_threads = True
     return server, holder

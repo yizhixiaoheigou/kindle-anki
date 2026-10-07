@@ -15,7 +15,15 @@ from urllib.request import urlopen
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from kindle_pack_server import is_lan_ip, list_packs, safe_zip_name, start_pack_server  # noqa: E402
+from kindle_pack_server import (  # noqa: E402
+    MAX_AI_ATTEMPTS,
+    is_lan_ip,
+    list_packs,
+    new_pairing_code,
+    safe_zip_name,
+    set_pairing_code,
+    start_pack_server,
+)
 
 
 class KindlePackServerTests(unittest.TestCase):
@@ -67,7 +75,7 @@ class KindlePackServerTests(unittest.TestCase):
                 "system_prompt": "",
             }
             server, holder = start_pack_server(Path(temp), 0)
-            holder["ai_code"] = "1234"
+            set_pairing_code(holder, "1234")
             holder["ai_config"] = config
             port = int(server.server_address[1])
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -86,6 +94,43 @@ class KindlePackServerTests(unittest.TestCase):
             finally:
                 server.shutdown()
                 server.server_close()
+
+    def test_ai_settings_locks_after_wrong_codes(self) -> None:
+        # A 4-digit code without a lockout falls to a LAN brute force and
+        # leaks the API key.
+        with tempfile.TemporaryDirectory(prefix="kindle-ai-lock-") as temp:
+            server, holder = start_pack_server(Path(temp), 0)
+            set_pairing_code(holder, "1234")
+            holder["ai_config"] = {"endpoint": "https://api.test/v1", "model": "m",
+                                   "api_key": "sk-secret", "system_prompt": ""}
+            port = int(server.server_address[1])
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+
+            def status(code: str) -> int:
+                try:
+                    with urlopen(f"http://127.0.0.1:{port}/ai-settings?code={code}", timeout=3) as response:
+                        return response.status
+                except urllib.error.HTTPError as error:
+                    return error.code
+
+            try:
+                for attempt in range(MAX_AI_ATTEMPTS):
+                    self.assertEqual(status(f"{attempt:04d}"), 403)
+                # Locked: even the right code is refused now.
+                self.assertEqual(status("1234"), 429)
+                set_pairing_code(holder, "5678")
+                self.assertEqual(status("1234"), 403)
+                self.assertEqual(status("5678"), 200)
+            finally:
+                server.shutdown()
+                server.server_close()
+
+    def test_pairing_codes_are_four_digits(self) -> None:
+        codes = {new_pairing_code() for _ in range(50)}
+        for code in codes:
+            self.assertRegex(code, r"^\d{4}$")
+        self.assertGreater(len(codes), 1)
 
 
 if __name__ == "__main__":
