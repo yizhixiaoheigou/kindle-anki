@@ -4,6 +4,10 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- The **Import via browser** screen on the Kindle now shows the page address
+  as a QR code too. The page itself notices when it is opened inside WeChat,
+  QQ, DingTalk, Alipay, Weibo, or Lark and explains how to open it in the
+  phone's browser instead.
 - The plugin menu now sits directly under **Tools** instead of **Tools →
   More tools**.
 - Redesigned the plugin and the browser import page.

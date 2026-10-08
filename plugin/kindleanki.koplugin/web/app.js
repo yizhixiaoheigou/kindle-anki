@@ -57,6 +57,36 @@
     }
 
     // ------------------------------------------------------------------
+    // In-app browsers (WeChat and friends)
+    // ------------------------------------------------------------------
+
+    // Scanning the Kindle's QR code with WeChat opens this page in WeChat's
+    // own browser, where picking an .apkg from Files is awkward and some
+    // builds lack DecompressionStream. Say how to move to the real browser.
+    var IN_APP = [
+        [/MicroMessenger/i, "微信"],
+        [/\bQQ\//, "QQ"],
+        [/DingTalk/i, "钉钉"],
+        [/AlipayClient/i, "支付宝"],
+        [/Weibo/i, "微博"],
+        [/Lark|Feishu/i, "飞书"],
+    ];
+
+    function showInAppHint() {
+        var ua = navigator.userAgent || "";
+        var app = null;
+        IN_APP.forEach(function (entry) {
+            if (!app && entry[0].test(ua)) app = entry[1];
+        });
+        if (!app) return;
+        var ios = /iPhone|iPad|iPod/i.test(ua);
+        $("inapp-title").textContent = "建议换到" + (ios ? " Safari " : "手机浏览器") + "里打开";
+        $("inapp-steps").textContent = "你在" + app + "里打开了这个页面，在这里选 .apkg 文件可能不方便。" +
+            "点右上角「···」，选「" + (ios ? "在 Safari 中打开" : "在浏览器打开") + "」，再继续导入。";
+        $("inapp").hidden = false;
+    }
+
+    // ------------------------------------------------------------------
     // Tabs
     // ------------------------------------------------------------------
 
@@ -88,6 +118,7 @@
     // ------------------------------------------------------------------
 
     function init() {
+        showInAppHint();
         TABS.forEach(function (tab) {
             $("tab-" + tab).addEventListener("click", function () { showTab(tab); });
             $("tab-" + tab).addEventListener("keydown", onTabKey);

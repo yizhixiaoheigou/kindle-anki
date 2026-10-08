@@ -109,9 +109,40 @@ package.preload["device"] = function()
         screen = {
             getWidth = function() return 1072 end,
             getHeight = function() return 1448 end,
+            getSize = function() return { w = 1072, h = 1448 } end,
             scaleBySize = function(_, value) return value end,
         },
+        hasKeys = function() return false end,
+        input = { group = { Back = {} } },
     }
+end
+
+-- Widgets the import QR dialog is built from.
+local qr_widgets = {}
+for _, name in ipairs({
+    "ui/widget/buttontable", "ui/widget/container/centercontainer", "ui/widget/container/framecontainer",
+    "ui/widget/textboxwidget", "ui/widget/verticalgroup", "ui/widget/verticalspan",
+}) do
+    package.preload[name] = function() return widget_class() end
+end
+local QRWidgetStub = widget_class()
+function QRWidgetStub:new(args) args._class = QRWidgetStub table.insert(qr_widgets, args) return args end
+package.preload["ui/widget/qrwidget"] = function() return QRWidgetStub end
+package.preload["ffi/blitbuffer"] = function() return { COLOR_WHITE = 0 } end
+package.preload["ui/font"] = function() return { getFace = function(_, name, size) return name .. size end } end
+package.preload["ui/size"] = function()
+    return { padding = { large = 10 }, radius = { window = 7 }, border = { window = 1 } }
+end
+package.preload["ui/widget/container/inputcontainer"] = function()
+    local Base = {}
+    function Base:extend(class) class = class or {} setmetatable(class, { __index = self }) class.__index = class return class end
+    function Base:new(object)
+        object = setmetatable(object or {}, self)
+        object.key_events = {}
+        if object.init then object:init() end
+        return object
+    end
+    return Base
 end
 package.preload["ui/trapper"] = function() return {} end
 package.preload["ui/widget/container/widgetcontainer"] = function()
@@ -336,6 +367,49 @@ do
         check("switching back restores Chinese", find_button(last_viewer(), "显示答案") ~= nil)
     end
     I18N.set_locale("zh_CN")
+end
+
+-- ------------------------------------------------------------------
+-- Import via browser: QR dialog
+-- ------------------------------------------------------------------
+
+do
+    local WebServerStub = require("webserver")
+    local stopped = 0
+    WebServerStub.active = {
+        ai_code = "4821",
+        url = function() return "http://192.168.5.36:8767/" end,
+        stop = function() stopped = stopped + 1 end,
+    }
+    plugin = new_plugin(short_card)
+    shown, qr_widgets = {}, {}
+    plugin:show_browser_import_dialog()
+    local dialog = shown[#shown]
+    check("import dialog has a QR code of the page address", #qr_widgets == 1
+        and qr_widgets[1].text == "http://192.168.5.36:8767/")
+    check("import dialog shows the pairing code", dialog and dialog.notes
+        and table.concat(dialog.notes, "\n"):find("4821", 1, true) ~= nil)
+    check("import dialog explains WeChat", dialog and dialog.notes[1]:find("微信", 1, true) ~= nil)
+    shown = {}
+    dialog.on_stop()
+    check("stop closes the server", stopped == 1 and WebServerStub.active == nil)
+
+    -- No Wi-Fi address: no QR code, a hint instead.
+    WebServerStub.active = { ai_code = "1", url = function() return "http://<kindle-ip>:8767/" end, stop = function() end }
+    shown, qr_widgets = {}, {}
+    plugin:show_browser_import_dialog()
+    check("no address means no QR code", #qr_widgets == 0
+        and shown[#shown].notes[1]:find("没找到", 1, true) ~= nil)
+
+    -- A KOReader build where the dialog cannot be built falls back to text.
+    local real = package.loaded["importdialog"]
+    package.loaded["importdialog"] = { new = function() error("no QRWidget here") end }
+    shown = {}
+    plugin:show_browser_import_dialog()
+    check("dialog failure falls back to a text box", shown[#shown] and shown[#shown]._class == classes["ui/widget/confirmbox"]
+        and shown[#shown].text:find("http://<kindle-ip>:8767/", 1, true) ~= nil)
+    package.loaded["importdialog"] = real
+    WebServerStub.active = nil
 end
 
 -- ------------------------------------------------------------------

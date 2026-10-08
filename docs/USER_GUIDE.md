@@ -56,8 +56,12 @@ The converter never uploads your deck. It does not write API keys into the pack.
 
 1. Kindle and phone/computer on the same Wi-Fi.
 2. **Tools → Kindle Anki → Import packs → Import via browser**. A dialog shows
-   the address, for example `http://192.168.1.20:8767/`.
-3. Open that address in the phone/computer browser.
+   the address, for example `http://192.168.1.20:8767/`, and the same address
+   as a QR code.
+3. Scan the QR code with the phone camera, or type the address in a browser.
+   If you scan with WeChat (or QQ, DingTalk, Alipay…), the page opens inside
+   that app and says so: tap **···** at the top right and choose to open it
+   in the browser (Safari on iPhone), where picking the file works better.
 4. Pick the Anki `.apkg` in the page (export it with *Support older Anki
    versions* checked). The page lists every note type with **all** its
    fields; each field shows an "例如 …" snippet of its real content. Tap

@@ -525,25 +525,48 @@ end
 function KindleAnki:show_browser_import_dialog()
     local url = WebServer.active:url()
     local code = WebServer.active.ai_code or ""
+    local has_ip = not url:find("<kindle-ip>", 1, true)
+    local function stop()
+        if WebServer.active then
+            WebServer.active:stop()
+            WebServer.active = nil
+        end
+        UIManager:show(InfoMessage:new{text = _("Import page closed.")})
+    end
+    local notes = {
+        has_ip and _("Phone and Kindle must be on the same Wi-Fi. If you scan with WeChat, tap ··· at the top right and open the page in your browser; choosing files works better there.")
+            or _("No Wi-Fi address found. Check that the Kindle is connected to Wi-Fi, then open this page again."),
+        string.format(_("Pairing code (for AI settings): %s"), code),
+        _("The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."),
+    }
+    local ok, dialog = pcall(function()
+        local ImportDialog = require("importdialog")
+        return ImportDialog:new{
+            title = _("Import via browser"),
+            lead = _("Scan with your phone camera, or type this address in a browser:"),
+            url = url,
+            show_qr = has_ip,
+            notes = notes,
+            keep_text = _("Keep it running"),
+            stop_text = _("Stop now"),
+            on_stop = stop,
+        }
+    end)
+    if ok and dialog then
+        UIManager:show(dialog)
+        return
+    end
+    -- Some KOReader build lacks a widget the QR screen uses: plain text.
     UIManager:show(ConfirmBox:new{
         title = _("Import via browser"),
         text = _("Open this address in your phone or computer browser (same Wi-Fi):")
             .. "\n\n" .. url .. "\n\n"
             .. _("Pick the .apkg in the page, convert it there, and it lands on this Kindle.")
-            .. "\n\n"
-            .. string.format(_("Pairing code (for AI settings): %s"), code)
-            .. "\n\n"
-            .. _("The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."),
+            .. "\n\n" .. table.concat(notes, "\n\n"),
         ok_text = _("Keep it running"),
         cancel_text = _("Stop now"),
         ok_callback = function() end,
-        cancel_callback = function()
-            if WebServer.active then
-                WebServer.active:stop()
-                WebServer.active = nil
-            end
-            UIManager:show(InfoMessage:new{text = _("Import page closed.")})
-        end,
+        cancel_callback = stop,
     })
 end
 

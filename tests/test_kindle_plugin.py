@@ -329,6 +329,15 @@ class BrowserImportContractTests(unittest.TestCase):
         self.assertIn("/dev/urandom", self.main)
         self.assertIn('"Content-Type": "application/json"', app)
 
+    def test_import_screen_shows_a_qr_code_with_a_text_fallback(self) -> None:
+        dialog = (PLUGIN / "importdialog.lua").read_text(encoding="utf-8")
+        self.assertIn('require("ui/widget/qrwidget")', dialog)
+        # A widget missing on some KOReader build must degrade to text.
+        self.assertIn('pcall(function()\n        local ImportDialog = require("importdialog")', self.main)
+        self.assertIn("ConfirmBox:new{", self.main.split("function KindleAnki:show_browser_import_dialog", 1)[1])
+        app = (PLUGIN / "web" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("MicroMessenger", app)
+
     def test_import_page_survives_plugin_instances(self) -> None:
         # KOReader makes a new plugin instance per file browser / book; the
         # running server must be shared and re-attached, not per-instance, or

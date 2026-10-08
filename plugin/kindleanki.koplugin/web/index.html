@@ -186,6 +186,9 @@
   .note.err { background: var(--danger-soft); color: var(--danger); }
   .note.info { background: var(--action-soft); color: var(--ink); }
   .note:empty { display: none; }
+  .inapp { background: var(--action-soft); border: 1px solid var(--action); border-radius: var(--radius);
+    padding: 12px 14px; margin: 0 0 16px; font-size: 15px; }
+  .inapp strong { display: block; font-size: 16px; margin-bottom: 2px; }
 
   /* Packs already on the Kindle. */
   .packs { list-style: none; margin: 0; padding: 0; }
@@ -224,6 +227,11 @@
     <h1>Kindle Anki</h1>
     <p class="status" id="device-info" data-state="wait" role="status">正在连接 Kindle…</p>
   </header>
+
+  <div class="inapp" id="inapp" role="note" hidden>
+    <strong id="inapp-title"></strong>
+    <span id="inapp-steps"></span>
+  </div>
 
   <nav class="tabs" role="tablist" aria-label="页面">
     <button class="tab" role="tab" id="tab-import" aria-controls="view-import" aria-selected="true">导入</button>

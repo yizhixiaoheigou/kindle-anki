@@ -21,6 +21,12 @@ local catalogs = {
         ["Pick the .apkg in the page, convert it there, and it lands on this Kindle."] =
             "在网页里选择 .apkg 文件，转换会直接在浏览器完成，卡包随即导入这台 Kindle。",
         ["Import page closed."] = "导入网页已关闭。",
+        ["Scan with your phone camera, or type this address in a browser:"] =
+            "用手机相机扫码，或在浏览器里输入这个地址：",
+        ["Phone and Kindle must be on the same Wi-Fi. If you scan with WeChat, tap ··· at the top right and open the page in your browser; choosing files works better there."] =
+            "手机和 Kindle 要连同一个 Wi-Fi。如果用微信扫码，打开后点右上角「···」，选「在浏览器打开」，在浏览器里选文件更顺手。",
+        ["No Wi-Fi address found. Check that the Kindle is connected to Wi-Fi, then open this page again."] =
+            "没找到 Kindle 的 Wi-Fi 地址。确认 Kindle 已连上 Wi-Fi，再重新打开这个页面。",
         ["Could not open the import page: %s"] = "无法打开导入网页：%s",
         ["Pairing code (for AI settings): %s"] = "配对码（网页里保存 AI 设置用）：%s",
         ["The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."] =
