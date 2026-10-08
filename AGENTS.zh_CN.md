@@ -25,6 +25,8 @@ python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 ## 文档
 
 英文 `.md` 配简体中文 `.zh_CN.md`，两边对齐。
+例外：`docs/HANDOFF.md`（唯一的当前交接）和 `docs/PROJECT_HISTORY.md`（里程碑历程）只写英文，
+避免出现第二份"当前状态"。开工前先读交接。
 
 ## 红线
 

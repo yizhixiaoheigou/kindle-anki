@@ -4,6 +4,8 @@
 
 # Kindle Anki 转换窗口重绘
 
+> **历史设计记录。** 已于 2026-09 落地；以 `tools/kindle_import_app.py` 和 `tools/kindle_import_ui.py` 的代码为准。见 [PROJECT_HISTORY.md](PROJECT_HISTORY.md)。
+
 实现以英文稿 [converter-ui-redesign.md](converter-ui-redesign.md) 为准。本文对齐关键决策。
 
 状态：已落地（2026-09）。落地偏差：新增 COPY 键 `pack_name` / `pack_name_hint` 与助手 `initial_pack_name`（卡包名称输入框）。范围：`tools/kindle_import_app.py` 与 `tools/kindle_import_ui.py`。不改卡包格式、导入语义、局域网无认证、Kindle 插件。

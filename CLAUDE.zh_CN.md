@@ -8,6 +8,12 @@
 
 产品边界、红线与文档规则在 [`AGENTS.md`](./AGENTS.md) / [`AGENTS.zh_CN.md`](./AGENTS.zh_CN.md)，请先读。本文件只补充命令与架构。
 
+## 当前状态
+
+- `main` 包含 2026-10-07 审计修复，领先 `origin/main`，尚未 push。
+- `feature/ui-redesign` 包含界面重设计和无线部署脚本，维护者正在 Kindle 上测试，测完再合并。
+- 详情与下一步见 [`docs/HANDOFF.md`](docs/HANDOFF.md)（英文），历程见 [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md)。
+
 ## 命令
 
 ```bash
@@ -54,4 +60,4 @@ scripts/kindle-deploy.sh <kindle-ip> --enable-restart  # 每台 Kindle 执行一
 
    插件从不解析 `.apkg`，只接收成品包。
 
-插件测试大多是**静态契约检查**：`test_kindle_plugin.py` 断言 Lua 源码里出现特定字符串和写法。改 UI 文案、i18n 键或代码写法时，要有意识地同步更新这些断言。唯一的 Lua 运行时覆盖是 `tests/lua_harness/run_webserver.lua`，它会打桩 KOReader 模块。
+插件测试大多是**静态契约检查**：`test_kindle_plugin.py` 断言 Lua 源码里出现特定字符串和写法。改 UI 文案、i18n 键或代码写法时，要有意识地同步更新这些断言。Lua 运行时覆盖来自 `tests/lua_harness/` 下的测试脚本（Web 服务、卡片界面与导航、卡包校验与统计、zip 防护、学习日），它们打桩 KOReader 模块，由各个 `test_kindle_*_lua.py` 驱动。

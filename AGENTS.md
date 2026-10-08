@@ -26,6 +26,9 @@ Do not add `tools/anki_importer.py` or `tools/folo_*.py`.
 ## Docs
 
 English `.md` plus Simplified Chinese `.zh_CN.md`. Keep both aligned.
+Exception: `docs/HANDOFF.md` (the one current hand-off) and
+`docs/PROJECT_HISTORY.md` (the milestone history) are English only, so there
+is never a second copy of the current state. Read the hand-off before starting work.
 
 ## Red lines
 

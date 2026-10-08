@@ -4,6 +4,8 @@
 
 # Kindle Anki Import — Desktop Window Redesign
 
+> **Historical design record.** Implemented in 2026-09; the code in `tools/kindle_import_app.py` and `tools/kindle_import_ui.py` is the current truth. See [PROJECT_HISTORY.md](PROJECT_HISTORY.md).
+
 | Field | Value |
 | --- | --- |
 | Title | Redraw the macOS converter window |
