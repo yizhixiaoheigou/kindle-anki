@@ -121,6 +121,49 @@ function KindleAnki:init()
     if WebServer.active and WebServer.active:is_running() then
         self:attach_webserver(WebServer.active)
     end
+    self:watch_dev_restart()
+end
+
+-- KOReader broadcasts FlushSettings on suspend and exit. Progress is
+-- batched in memory, so write it out then instead of losing it.
+function KindleAnki:onFlushSettings()
+    if self.store then self.store:flush_progress() end
+end
+
+-- Developer devices only: when DEV_RESTART_MARKER exists, the deploy script
+-- (scripts/kindle-deploy.sh --restart) asks for a restart by creating
+-- DEV_RESTART_REQUEST. KOReader then restarts through its own menu path,
+-- which saves settings and progress first. Without the marker nothing runs.
+local DEV_RESTART_MARKER = "/mnt/us/kindle-anki/dev-remote-restart"
+local DEV_RESTART_REQUEST = "/tmp/kindle-anki-restart"
+local DEV_RESTART_POLL_SECONDS = 2
+
+function KindleAnki:watch_dev_restart()
+    local lfs = require("libs/libkoreader-lfs")
+    if lfs.attributes(DEV_RESTART_MARKER, "mode") ~= "file" then return end
+    -- One watcher for all plugin instances; it acts through the newest one,
+    -- whose UI (file browser or reader) is the one on screen.
+    KindleAnki.dev_restart_owner = self
+    if KindleAnki.dev_restart_watching then return end
+    KindleAnki.dev_restart_watching = true
+    local function check()
+        if lfs.attributes(DEV_RESTART_REQUEST, "mode") then
+            os.remove(DEV_RESTART_REQUEST)
+            KindleAnki.dev_restart_watching = false
+            local owner = KindleAnki.dev_restart_owner
+            if owner and owner.store then owner.store:flush_progress() end
+            local menu = owner and owner.ui and owner.ui.menu
+            if menu and menu.exitOrRestart then
+                menu:exitOrRestart(function() UIManager:restartKOReader() end)
+            else
+                UIManager:flushSettings()
+                UIManager:restartKOReader()
+            end
+            return
+        end
+        UIManager:scheduleIn(DEV_RESTART_POLL_SECONDS, check)
+    end
+    UIManager:scheduleIn(DEV_RESTART_POLL_SECONDS, check)
 end
 
 function KindleAnki:addToMainMenu(menu_items)

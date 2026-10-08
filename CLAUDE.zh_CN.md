@@ -26,9 +26,10 @@ python3 tools/kindle_anki_importer.py --help   # 命令行转换器
 scripts/kindle-deploy.sh <kindle-ip>              # 装完在 KOReader 里 退出 → 重启 KOReader
 scripts/kindle-deploy.sh <kindle-ip> --crash-log  # 查看 koreader/crash.log 末尾
 scripts/kindle-deploy.sh <kindle-ip> --rollback   # 恢复上一次安装的版本
+scripts/kindle-deploy.sh <kindle-ip> --enable-restart  # 每台 Kindle 执行一次：之后每次安装都会自动重启 KOReader
 ```
 
-- 部署脚本要求 Kindle 的 `koreader/settings/SSH/authorized_keys` 里有你的公钥，并且 KOReader 的 SSH 服务器在运行（工具 → 更多工具 → SSH 服务器，勾选「随 KOReader 启动 SSH 服务器」）。替换后会逐个文件核对 MD5。
+- 部署脚本要求 Kindle 的 `koreader/settings/SSH/authorized_keys` 里有你的公钥，并且 KOReader 的 SSH 服务器在运行（工具 → 更多工具 → SSH 服务器，勾选「随 KOReader 启动 SSH 服务器」）。替换后会逐个文件核对 MD5。远程重启只在有 `/mnt/us/kindle-anki/dev-remote-restart` 标记文件的 Kindle 上生效（`--enable-restart` 创建）；脚本创建 `/tmp/kindle-anki-restart` 后，插件走 KOReader 菜单自己的重启流程，会先保存设置和学习进度。
 - UI 测试在模块顶层 import `tkinter`，要用带 Tcl/Tk 的 Python。
 - `test_kindle_web_converter.py` 需要 `node`，各个 `test_kindle_*_lua.py` 需要 `lua`/`luajit`（Web 服务那个还需要 luasocket）。缺少对应工具时会**静默跳过**，所以没有这些工具时全绿，并不代表浏览器转换器和插件的 Lua 代码已被覆盖。设置 `KINDLE_ANKI_REQUIRE_TOOLS=1` 可让缺工具直接失败；CI 已设置该变量，并安装 Lua 5.4、luasocket 和 node。
 - 维护者的 Linux VM 没有 `tkinter` 和 `lua`。全量测试请在 Mac 上跑：`mac-run python3 -m unittest discover -s tests -p 'test_kindle_*.py'`。Mac 上有 Tk、`lua`、`node`，不会有跳过。

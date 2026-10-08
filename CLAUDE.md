@@ -26,9 +26,10 @@ python3 tools/kindle_anki_importer.py --help   # CLI converter
 scripts/kindle-deploy.sh <kindle-ip>              # then Exit → Restart KOReader
 scripts/kindle-deploy.sh <kindle-ip> --crash-log  # tail of koreader/crash.log
 scripts/kindle-deploy.sh <kindle-ip> --rollback   # restore the previous install
+scripts/kindle-deploy.sh <kindle-ip> --enable-restart  # once per Kindle: installs then restart KOReader by themselves
 ```
 
-- The deploy script needs a public key in `koreader/settings/SSH/authorized_keys` on the Kindle, and KOReader's SSH server running (Tools → More tools → SSH server, with "Start SSH server with KOReader"). It verifies every file by MD5 after the swap.
+- The deploy script needs a public key in `koreader/settings/SSH/authorized_keys` on the Kindle, and KOReader's SSH server running (Tools → More tools → SSH server, with "Start SSH server with KOReader"). It verifies every file by MD5 after the swap. Remote restart only works on a Kindle with the `/mnt/us/kindle-anki/dev-remote-restart` marker (`--enable-restart`); the plugin then restarts KOReader through its own menu path when the script creates `/tmp/kindle-anki-restart`, so settings and progress are saved first.
 - The UI tests import `tkinter` at module level, so use a Python that has Tcl/Tk.
 - `test_kindle_web_converter.py` needs `node`. The `test_kindle_*_lua.py` files need `lua`/`luajit` (the web server one also needs luasocket). Each **skips silently** when its tool is missing, so a green run without them has not covered the browser converter or the plugin's Lua. Set `KINDLE_ANKI_REQUIRE_TOOLS=1` to make a missing tool fail instead; CI sets it and installs Lua 5.4, luasocket, and node.
 - The maintainer's Linux VM has no `tkinter` or `lua`. Run the full suite on the Mac with `mac-run python3 -m unittest discover -s tests -p 'test_kindle_*.py'`, which has Tk, `lua`, and `node`, so nothing skips.

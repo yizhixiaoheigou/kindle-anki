@@ -22,11 +22,15 @@ end
 -- ------------------------------------------------------------------
 
 local shown = {}
+local scheduled = {}
+local restarts = 0
 package.preload["ui/uimanager"] = function()
     return {
         show = function(_, widget) table.insert(shown, widget) end,
         close = function() end,
-        scheduleIn = function() end,
+        scheduleIn = function(_, _, fn) table.insert(scheduled, fn) end,
+        flushSettings = function() end,
+        restartKOReader = function() restarts = restarts + 1 end,
     }
 end
 
@@ -442,6 +446,42 @@ do
     check("right choice is marked correct", last_viewer().text:find("回答正确", 1, true) ~= nil)
     plugin:show_answer({ [1] = true })
     check("wrong choice is marked", last_viewer().text:find("回答有误", 1, true) ~= nil)
+end
+
+-- ------------------------------------------------------------------
+-- Developer remote restart
+-- ------------------------------------------------------------------
+
+do
+    local MARKER = "/mnt/us/kindle-anki/dev-remote-restart"
+    local REQUEST = "/tmp/kindle-anki-restart"
+    KindleAnki.dev_restart_watching = nil
+    plugin = new_plugin(short_card)
+    local exits = 0
+    plugin.ui = { menu = { exitOrRestart = function(_, callback) exits = exits + 1 callback() end } }
+
+    missing_files[MARKER] = true
+    scheduled = {}
+    plugin:watch_dev_restart()
+    check("no marker, no watcher", #scheduled == 0)
+
+    missing_files[MARKER] = nil
+    missing_files[REQUEST] = true
+    plugin:watch_dev_restart()
+    plugin:watch_dev_restart()
+    check("marker starts one watcher", #scheduled == 1)
+    local tick = table.remove(scheduled)
+    tick()
+    check("no request keeps polling", restarts == 0 and #scheduled == 1)
+
+    missing_files[REQUEST] = nil
+    plugin.flushes = 0
+    tick = table.remove(scheduled)
+    tick()
+    check("request restarts through the menu", exits == 1 and restarts == 1)
+    check("progress is flushed before restart", plugin.flushes == 1)
+    check("watcher stops after restarting", #scheduled == 0)
+    missing_files[MARKER] = true
 end
 
 if failures > 0 then
