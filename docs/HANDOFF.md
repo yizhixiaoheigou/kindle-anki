@@ -11,9 +11,10 @@ The one current hand-off. Rewrite it in place; history goes to
 - `main` (`4fb65d7`) holds the 2026-10-07 audit fixes and the old-KOReader
   plain-text fallback. It is 14 commits ahead of `origin/main` and not pushed;
   pushing is the owner's call (AGENTS.md red line).
-- `feature/ui-redesign` (`8cfd6ea`, 5 commits on top of `main`) holds the
+- `feature/ui-redesign` (branched from `main` at `4fb65d7`) holds the
   plugin and browser-page redesign, the Tools menu move, the Manage packs
-  crash fix, and the wireless deploy script with remote restart. Not merged.
+  crash fix, the wireless deploy script with remote restart, and these
+  knowledge docs. Not merged.
 - The maintainer's Kindle (KOReader v2026.07.1) runs `feature/ui-redesign`.
   Its KOReader SSH server autostarts with key-only login, and remote restart
   is enabled on it.
