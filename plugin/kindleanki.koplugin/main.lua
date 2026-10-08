@@ -178,9 +178,9 @@ function KindleAnki:addToMainMenu(menu_items)
             {
                 text = _("Import packs"),
                 sub_item_table = {
-                    { text = _("Import via browser"), callback = function() self:open_browser_import() end },
-                    { text = _("Import from computer"), callback = function() self:import_from_computer() end },
-                    { text = _("Import pack"), callback = function() self:import_pack() end },
+                    { text = _("Phone or computer browser (recommended)"), callback = function() self:open_browser_import() end },
+                    { text = _("Computer converter over Wi-Fi"), callback = function() self:import_from_computer() end },
+                    { text = _("A file already on this Kindle"), callback = function() self:import_pack() end },
                 },
             },
             {
@@ -190,8 +190,9 @@ function KindleAnki:addToMainMenu(menu_items)
             {
                 text = _("AI settings"),
                 sub_item_table = {
-                    { text = _("Edit AI settings"), callback = function() self:open_ai_settings() end },
-                    { text = _("Import AI settings from computer"), callback = function() self:open_ai_share_import() end },
+                    { text = _("Phone or computer browser (recommended)"), callback = function() self:open_browser_import("ai") end },
+                    { text = _("Computer converter over Wi-Fi"), callback = function() self:open_ai_share_import() end },
+                    { text = _("Type it on the Kindle"), callback = function() self:open_ai_settings() end },
                     { text = _("Clean AI storage"), callback = function() self:clean_ai_storage() end },
                 },
             },
@@ -366,7 +367,7 @@ function KindleAnki:open_library_actions()
         buttons = {
             {{ text = _("Import packs"), align = "left", callback = run(function() self:open_import_hub() end) }},
             {{ text = _("Manage packs"), align = "left", callback = run(function() self:open_pack_manager() end) }},
-            {{ text = _("AI settings"), align = "left", callback = run(function() self:open_ai_settings() end) }},
+            {{ text = _("AI settings"), align = "left", callback = run(function() self:open_ai_hub() end) }},
             {{ text = _("Clean AI storage"), align = "left", callback = function()
                 close_widget(dialog)
                 self:clean_ai_storage()
@@ -394,6 +395,29 @@ function KindleAnki:open_import_hub()
                callback = run(function() self:import_from_computer() end) }},
             {{ text = _("A file already on this Kindle"), align = "left",
                callback = run(function() self:import_pack() end) }},
+            {{ text = _("Cancel"), callback = function() close_widget(dialog) end }},
+        },
+    }
+    UIManager:show(dialog)
+end
+
+function KindleAnki:open_ai_hub()
+    local dialog
+    local function run(action)
+        return function()
+            close_widget(dialog)
+            action()
+        end
+    end
+    dialog = ButtonDialog:new{
+        title = _("AI settings"),
+        buttons = {
+            {{ text = _("Phone or computer browser (recommended)"), align = "left",
+               callback = run(function() self:open_browser_import("ai") end) }},
+            {{ text = _("Computer converter over Wi-Fi"), align = "left",
+               callback = run(function() self:open_ai_share_import() end) }},
+            {{ text = _("Type it on the Kindle"), align = "left",
+               callback = run(function() self:open_ai_settings() end) }},
             {{ text = _("Cancel"), callback = function() close_widget(dialog) end }},
         },
     }
@@ -489,11 +513,12 @@ function KindleAnki:attach_webserver(server)
     end
 end
 
-function KindleAnki:open_browser_import()
+-- `focus` is "ai" when opened from AI settings: same page, its AI tab.
+function KindleAnki:open_browser_import(focus)
     close_widget(self.library_dialog)
     if WebServer.active and WebServer.active:is_running() then
         self:attach_webserver(WebServer.active)
-        self:show_browser_import_dialog()
+        self:show_browser_import_dialog(focus)
         return
     end
     local function work()
@@ -512,7 +537,7 @@ function KindleAnki:open_browser_import()
             return
         end
         WebServer.active = server
-        self:show_browser_import_dialog()
+        self:show_browser_import_dialog(focus)
     end
     local ok, NetworkMgr = pcall(require, "ui/network/manager")
     if ok and NetworkMgr and NetworkMgr.runWhenOnline then
@@ -522,10 +547,11 @@ function KindleAnki:open_browser_import()
     end
 end
 
-function KindleAnki:show_browser_import_dialog()
+function KindleAnki:show_browser_import_dialog(focus)
     local url = WebServer.active:url()
     local code = WebServer.active.ai_code or ""
     local has_ip = not url:find("<kindle-ip>", 1, true)
+    local for_ai = focus == "ai"
     local function stop()
         if WebServer.active then
             WebServer.active:stop()
@@ -533,18 +559,25 @@ function KindleAnki:show_browser_import_dialog()
         end
         UIManager:show(InfoMessage:new{text = _("Import page closed.")})
     end
-    local notes = {
-        has_ip and _("Phone and Kindle must be on the same Wi-Fi. If you scan with WeChat, tap ··· at the top right and open the page in your browser; choosing files works better there.")
-            or _("No Wi-Fi address found. Check that the Kindle is connected to Wi-Fi, then open this page again."),
-        string.format(_("Pairing code (for AI settings): %s"), code),
-        _("The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."),
-    }
+    local wifi_note = has_ip and _("Phone and Kindle must be on the same Wi-Fi. If you scan with WeChat, tap ··· at the top right and open the page in your browser; choosing files works better there.")
+        or _("No Wi-Fi address found. Check that the Kindle is connected to Wi-Fi, then open this page again.")
+    local code_note = string.format(_("Pairing code (for AI settings): %s"), code)
+    local notes
+    if for_ai then
+        notes = { code_note, _("Fill in the page's AI tab and enter this code. The key is saved on this Kindle only."), wifi_note }
+    else
+        notes = { wifi_note, code_note }
+    end
+    table.insert(notes, _("The page keeps working until you tap Stop here, quit KOReader, or nobody visits it for 30 minutes. You can leave this screen and come back later."))
+    local title = for_ai and _("Set up AI from a phone or computer") or _("Import via browser")
     local ok, dialog = pcall(function()
         local ImportDialog = require("importdialog")
         return ImportDialog:new{
-            title = _("Import via browser"),
+            title = title,
             lead = _("Scan with your phone camera, or type this address in a browser:"),
             url = url,
+            -- The page opens its AI tab for #ai.
+            qr_text = for_ai and (url .. "#ai") or url,
             show_qr = has_ip,
             notes = notes,
             keep_text = _("Keep it running"),
@@ -558,11 +591,11 @@ function KindleAnki:show_browser_import_dialog()
     end
     -- Some KOReader build lacks a widget the QR screen uses: plain text.
     UIManager:show(ConfirmBox:new{
-        title = _("Import via browser"),
+        title = title,
         text = _("Open this address in your phone or computer browser (same Wi-Fi):")
             .. "\n\n" .. url .. "\n\n"
-            .. _("Pick the .apkg in the page, convert it there, and it lands on this Kindle.")
-            .. "\n\n" .. table.concat(notes, "\n\n"),
+            .. (for_ai and "" or (_("Pick the .apkg in the page, convert it there, and it lands on this Kindle.") .. "\n\n"))
+            .. table.concat(notes, "\n\n"),
         ok_text = _("Keep it running"),
         cancel_text = _("Stop now"),
         ok_callback = function() end,
@@ -1445,38 +1478,18 @@ function KindleAnki:show_round_done()
     UIManager:show(self.done_dialog)
 end
 
+-- The Kindle's own AI settings are the only source. Packs may still carry
+-- an `ai` block from older converters; it is ignored, so a key never goes
+-- to a server a pack names.
 function KindleAnki:ai_config()
     local saved = self.settings:readSetting("ai", {})
     if type(saved) ~= "table" then saved = {} end
-    local pack_ai = self.pack and self.pack.ai or {}
-    if type(pack_ai) ~= "table" then pack_ai = {} end
-    local function present(v) return v ~= nil and v ~= "" end
-    -- Pair credentials with their source: a local API key must never travel to
-    -- a pack-supplied endpoint (or a pack key to a local endpoint) without an
-    -- explicit confirmation at request time.
-    local endpoint, api_key, cross_source = "", "", false
-    if present(saved.endpoint) and present(saved.api_key) then
-        endpoint, api_key = saved.endpoint, saved.api_key
-    elseif present(pack_ai.endpoint) and present(pack_ai.api_key) then
-        endpoint, api_key = pack_ai.endpoint, pack_ai.api_key
-    elseif present(saved.api_key) and present(pack_ai.endpoint) then
-        endpoint, api_key, cross_source = pack_ai.endpoint, saved.api_key, true
-    elseif present(pack_ai.api_key) and present(saved.endpoint) then
-        endpoint, api_key, cross_source = saved.endpoint, pack_ai.api_key, true
-    elseif present(saved.endpoint) then
-        endpoint = saved.endpoint
-    elseif present(pack_ai.endpoint) then
-        endpoint = pack_ai.endpoint
-    end
-    local model = present(saved.model) and saved.model or pack_ai.model or ""
-    local system_prompt = present(saved.system_prompt) and saved.system_prompt
-        or pack_ai.system_prompt or ""
+    local function text(value) return type(value) == "string" and value or "" end
     return {
-        endpoint = endpoint,
-        model = model,
-        api_key = api_key,
-        system_prompt = system_prompt,
-        cross_source = cross_source,
+        endpoint = text(saved.endpoint),
+        model = text(saved.model),
+        api_key = text(saved.api_key),
+        system_prompt = text(saved.system_prompt),
     }
 end
 
@@ -1484,11 +1497,11 @@ function KindleAnki:open_ai_settings()
     local config = self:ai_config()
     local dialog
     dialog = MultiInputDialog:new{
-        title = _("AI settings (local values override pack)"),
+        title = _("AI settings"),
         fields = {
             { text = config.endpoint, hint = "https://api.example.com/v1", description = _("OpenAI-compatible endpoint") },
             { text = config.model, hint = "model-name", description = _("Model name") },
-            { text = config.api_key, hint = "sk-…", text_type = "password", description = _("API key; local value overrides the pack. Plain http:// sends it unencrypted") },
+            { text = config.api_key, hint = "sk-…", text_type = "password", description = _("API key. Plain http:// sends it unencrypted") },
             { text = config.system_prompt, hint = _("Explain clearly"), description = _("System prompt") },
         },
         buttons = {{
@@ -1598,18 +1611,11 @@ end
 function KindleAnki:open_ai_input(card, revealed)
     local config = self:ai_config()
     if config.api_key == "" then
-        UIManager:show(InfoMessage:new{text = _("Configure an API key in the pack or Kindle Anki → AI settings first.")})
-        return
-    end
-    if config.cross_source and not self._ai_cross_consent then
         UIManager:show(ConfirmBox:new{
-            text = _("This pack defines its own AI endpoint. Your local API key will be sent to that server. Continue?"),
-            ok_text = _("Continue"),
+            text = _("AI is not set up yet. Set it up from your phone or computer now?"),
+            ok_text = _("Set up AI"),
             cancel_text = _("Cancel"),
-            ok_callback = function()
-                self._ai_cross_consent = true
-                self:open_ai_input(card, revealed)
-            end,
+            ok_callback = function() self:open_ai_hub() end,
         })
         return
     end

@@ -4,6 +4,13 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- AI now uses only the settings saved on the Kindle; a pack's `ai` block is
+  ignored. This removes the pack-endpoint confirmation, since a local key can
+  no longer go to a server a pack names.
+- **AI settings** offers the same three ways as **Import packs**: phone or
+  computer browser (a QR code that opens the page's AI tab, with the pairing
+  code first), the computer converter, or typing on the Kindle. **AI
+  explain** without settings offers to set them up.
 - The **Import via browser** screen on the Kindle now shows the page address
   as a QR code too. The page itself notices when it is opened inside WeChat,
   QQ, DingTalk, Alipay, Weibo, or Lark and explains how to open it in the

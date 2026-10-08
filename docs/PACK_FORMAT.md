@@ -19,5 +19,6 @@ Images sit under the matching side's text and scale to the smaller of 90%
 width or 50% height.
 
 Do not put API keys in pack JSON. The converter strips `ai.api_key` on save.
-Old packs that already contain a key still load; the plugin prefers the
-Kindle-local AI settings.
+The optional `ai` block (endpoint, model, system prompt) is kept for other
+tools, but the Kindle plugin ignores it: AI uses only the settings saved on
+the Kindle. Old packs that carry an `ai` block, even with a key, still load.

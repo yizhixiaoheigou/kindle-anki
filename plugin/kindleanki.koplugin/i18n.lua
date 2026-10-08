@@ -99,14 +99,16 @@ local catalogs = {
         ["Next"] = "下一张",
         ["Skip"] = "跳过",
         ["Rate anyway"] = "仍要评分",
-        ["Edit AI settings"] = "填写 AI 设置",
-        ["AI settings (local values override pack)"] = "AI 设置（本机设置优先于卡包）",
+        ["Type it on the Kindle"] = "在 Kindle 上直接填写",
+        ["Set up AI from a phone or computer"] = "用手机或电脑浏览器设置 AI",
+        ["Fill in the page's AI tab and enter this code. The key is saved on this Kindle only."] =
+            "在网页的「AI」页填好接口、模型和 key，再填上这个配对码。key 只保存在这台 Kindle 上。",
+        ["AI is not set up yet. Set it up from your phone or computer now?"] =
+            "AI 还没设置。现在用手机或电脑设置吗？",
+        ["Set up AI"] = "去设置",
         ["OpenAI-compatible endpoint"] = "OpenAI 兼容接口",
         ["Model name"] = "模型名称",
-        ["API key; local value overrides the pack. Plain http:// sends it unencrypted"] =
-            "API 密钥；本机设置优先于卡包。明文 http:// 会不加密传输密钥",
-        ["This pack defines its own AI endpoint. Your local API key will be sent to that server. Continue?"] =
-            "此卡包自带 AI 接口。你的本机 API 密钥将被发送到该服务器。是否继续？",
+        ["API key. Plain http:// sends it unencrypted"] = "API 密钥。明文 http:// 会不加密传输密钥",
         ["Continue"] = "继续",
         ["System prompt"] = "系统提示词",
         ["Explain clearly"] = "请清晰解释",
@@ -119,8 +121,6 @@ local catalogs = {
         ["(empty)"] = "（空）",
         ["Fetching AI settings…"] = "正在获取 AI 设置…",
         ["Could not import AI settings: %s"] = "导入 AI 设置失败：%s",
-        ["Configure an API key in the pack or Kindle Anki → AI settings first."] =
-            "请先在卡包中配置 API 密钥，或进入 Kindle Anki → AI 设置。",
         ["Ask AI about this card"] = "询问 AI",
         ["The previous AI conversation will appear after you send."] = "发送后会显示之前的 AI 对话，可继续追问。",
         ["Type what you do not understand"] = "输入你不懂的地方",

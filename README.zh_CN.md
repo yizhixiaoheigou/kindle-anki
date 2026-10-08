@@ -90,12 +90,18 @@ Again = 10 分钟。Hard/Good/Easy 用天粒度 SM-2。
 
 ## 可选 AI
 
-**工具 → Kindle Anki → AI 设置 → 填写 AI 设置。** endpoint、模型和 API key 只放在 Kindle 上。
-直连 HTTPS POST `/v1/chat/completions`。卡片带图时，图片会以 base64 一并发给 endpoint。
-思考过程会藏起来，但不会关掉模型思考。卡包 JSON 不带密钥。明文 `http://` 的 endpoint 会
-不加密传输 key，建议用 `https://`。不想在 Kindle 上打长密钥：先在转换器「AI 设置」里
-粘贴好配置，再在 Kindle 选「从电脑导入 AI 设置」，输入转换器窗口显示的配对码即可；
-或者直接粘贴进浏览器导入网页的「AI」标签页，配上 Kindle 弹窗里的 4 位配对码。
+AI 解析只用 Kindle 上保存的一份设置，卡包里自带的 AI 字段一律不用。在
+**工具 → Kindle Anki → AI 设置** 里任选一种方式设置：
+
+- **用手机或电脑浏览器（推荐）。** Kindle 显示二维码和 4 位配对码。扫码打开网页，在「AI」
+  页填好接口、模型和 API key，再填配对码保存。
+- **从电脑转换器（同一 Wi-Fi）。** 先在转换器「AI 设置」里粘贴好配置，再在 Kindle 上填电脑
+  IP 和转换器窗口里的配对码。
+- **在 Kindle 上直接填写。**
+
+请求直连 `/v1/chat/completions`；卡片带图时，图片会以 base64 一并发出。思考过程会藏起来，
+但不会关掉模型思考。卡包 JSON 从不带密钥。明文 `http://` 的接口会不加密传输 key，建议用
+`https://`。
 
 ## 和 KAnki / anki.koplugin 的差别
 

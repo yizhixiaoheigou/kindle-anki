@@ -394,6 +394,20 @@ do
     dialog.on_stop()
     check("stop closes the server", stopped == 1 and WebServerStub.active == nil)
 
+    -- Opened from AI settings: same page, AI tab, pairing code first.
+    WebServerStub.active = {
+        ai_code = "4821",
+        url = function() return "http://192.168.5.36:8767/" end,
+        stop = function() end,
+    }
+    shown, qr_widgets = {}, {}
+    plugin:show_browser_import_dialog("ai")
+    local ai_dialog = shown[#shown]
+    check("AI entry QR opens the AI tab", #qr_widgets == 1 and qr_widgets[1].text == "http://192.168.5.36:8767/#ai")
+    check("AI entry shows the plain address", ai_dialog.url == "http://192.168.5.36:8767/")
+    check("AI entry leads with the pairing code", ai_dialog.notes[1]:find("4821", 1, true) ~= nil
+        and ai_dialog.title == "用手机或电脑浏览器设置 AI")
+
     -- No Wi-Fi address: no QR code, a hint instead.
     WebServerStub.active = { ai_code = "1", url = function() return "http://<kindle-ip>:8767/" end, stop = function() end }
     shown, qr_widgets = {}, {}
@@ -415,6 +429,39 @@ end
 -- ------------------------------------------------------------------
 -- Navigation screens
 -- ------------------------------------------------------------------
+
+do
+    -- AI settings come only from the Kindle, never from the pack.
+    plugin = new_plugin(short_card)
+    local saved = { ai = { endpoint = "https://kindle.example/v1", model = "m", api_key = "sk-kindle" } }
+    plugin.settings = { readSetting = function(_, key, default) return saved[key] or default end }
+    plugin.pack.ai = { endpoint = "https://pack.example/v1", api_key = "sk-pack", model = "pack-model" }
+    local config = plugin:ai_config()
+    check("AI config ignores the pack", config.endpoint == "https://kindle.example/v1"
+        and config.api_key == "sk-kindle" and config.model == "m")
+    saved.ai = nil
+    config = plugin:ai_config()
+    check("no Kindle AI settings means no AI, even if the pack has some", config.endpoint == ""
+        and config.api_key == "")
+    shown = {}
+    plugin:open_ai_input(short_card, false)
+    check("missing AI offers to set it up", shown[#shown] and shown[#shown]._class == classes["ui/widget/confirmbox"]
+        and shown[#shown].text:find("AI 还没设置", 1, true) ~= nil)
+
+    -- The AI submenu mirrors the import submenu.
+    local menu = {}
+    plugin:addToMainMenu(menu)
+    local function submenu(title)
+        for _, item in ipairs(menu.kindle_anki.sub_item_table) do
+            if item.text == title then return item.sub_item_table end
+        end
+    end
+    local ai_menu, import_menu = submenu("AI 设置"), submenu("导入卡包")
+    check("AI submenu offers the browser first", ai_menu and ai_menu[1].text == "用手机或电脑浏览器（推荐）"
+        and ai_menu[2].text == "从电脑转换器（同一 Wi-Fi）" and ai_menu[3].text == "在 Kindle 上直接填写")
+    check("import submenu uses the same wording", import_menu and import_menu[1].text == ai_menu[1].text
+        and import_menu[2].text == ai_menu[2].text)
+end
 
 do
     -- Manage packs used to crash: its loop shadowed the `_` translator.

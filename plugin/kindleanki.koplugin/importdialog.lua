@@ -24,7 +24,8 @@ local ImportDialog = InputContainer:extend{
     modal = true,
     title = nil,
     lead = nil,       -- one line above the QR code
-    url = nil,        -- encoded in the QR code when show_qr is true
+    url = nil,        -- the address shown as text
+    qr_text = nil,    -- what the QR code encodes; defaults to url
     show_qr = true,
     notes = nil,      -- list of paragraphs under the address
     keep_text = nil,
@@ -60,7 +61,7 @@ function ImportDialog:init()
         -- read off e-ink at arm's length, small enough to keep the buttons.
         local qr_size = math.floor(math.min(inner * 0.75, Screen:getHeight() * 0.32))
         table.insert(group, VerticalSpan:new{ width = gap })
-        table.insert(group, QRWidget:new{ text = self.url, width = qr_size, height = qr_size })
+        table.insert(group, QRWidget:new{ text = self.qr_text or self.url, width = qr_size, height = qr_size })
     end
     table.insert(group, VerticalSpan:new{ width = gap })
     table.insert(group, text(self.url, Font:getFace("tfont", 24)))

@@ -100,15 +100,21 @@ SM-2.
 
 ## Optional AI
 
-**Tools → Kindle Anki → AI settings → Edit AI settings.** Endpoint, model, and API key stay **on
-the Kindle**. Direct HTTPS POST `/v1/chat/completions`. Card images are sent along as
-base64 when a card has them. Thinking tags are
-hidden, not disabled. Pack JSON does not carry keys. Plain `http://` endpoints send the
-key unencrypted — prefer `https://`.
-To skip typing the long key on the Kindle: open the converter's **AI settings**, paste
-your config, then on the Kindle choose **Import AI settings from computer** and enter
-the 4-digit pairing code shown in the converter window — or paste the same fields into
-the browser import page with the pairing code shown in the Kindle dialog.
+AI explanations use one set of settings saved on the Kindle; a pack's own AI
+fields are ignored. Set them up from **Tools → Kindle Anki → AI settings**,
+in one of three ways:
+
+- **Phone or computer browser (recommended).** The Kindle shows a QR code and
+  a 4-digit pairing code. Scan it, fill in endpoint, model, and API key on the
+  page's **AI** tab, enter the code, and save.
+- **Computer converter over Wi-Fi.** Paste the config into the converter's
+  **AI settings**, then enter the computer's IP and the converter's pairing
+  code on the Kindle.
+- **Type it on the Kindle.**
+
+Requests go straight to `/v1/chat/completions`; card images are sent along as
+base64. Thinking tags are hidden, not disabled. Pack JSON never carries keys.
+Plain `http://` endpoints send the key unencrypted — prefer `https://`.
 
 ## Versus KAnki / anki.koplugin
 

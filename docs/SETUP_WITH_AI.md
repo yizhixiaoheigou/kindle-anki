@@ -165,12 +165,12 @@ the device and let the user pick it via the plugin's "Import pack" menu.
      **KUAL → KOReader → Start KOReader**.
 3. Menu: **Tools → Kindle Anki**.
 4. The first open of a pack asks for the daily new-card count (1–999, default 20).
-5. Optional AI: open the converter on the computer (double-click
-   `Kindle-Anki-Import.command` / `.bat`, or the packaged app from the
-   release), click **AI settings**, paste the key; on the Kindle choose
-   **Import AI settings from computer** and enter the computer IP plus the
-   4-digit pairing code shown in the converter window. Both devices must be
-   on the same Wi-Fi.
+5. Optional AI: on the Kindle choose **Tools → Kindle Anki → AI settings →
+   Phone or computer browser (recommended)**. Scan the QR code with the phone,
+   fill in endpoint, model, and API key on the page's **AI** tab, and enter
+   the 4-digit pairing code shown on the Kindle. Both devices must be on the
+   same Wi-Fi. (The computer converter's **AI settings** plus **Computer
+   converter over Wi-Fi** on the Kindle also works.)
 
 ### Troubleshooting
 

@@ -803,10 +803,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("input", type=Path, help="Anki .apkg file")
     parser.add_argument("-o", "--output", type=Path, help="Kindle JSON pack")
     parser.add_argument(
-        "--endpoint", help="OpenAI-compatible base URL stored as a pack default"
+        "--endpoint",
+        help="OpenAI-compatible base URL stored in the pack's ai block "
+        "(for other tools; the Kindle plugin uses only its own AI settings)",
     )
-    parser.add_argument("--model", help="model name stored as a pack default")
-    parser.add_argument("--system-prompt", help="system prompt stored as a pack default")
+    parser.add_argument("--model", help="model name stored in the pack's ai block")
+    parser.add_argument("--system-prompt", help="system prompt stored in the pack's ai block")
     parser.add_argument("--api-key", help=argparse.SUPPRESS)
     parser.add_argument("--report-only", action="store_true")
     parser.add_argument(

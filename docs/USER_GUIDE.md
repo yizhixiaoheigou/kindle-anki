@@ -136,14 +136,22 @@ minutes. Hard / Good / Easy use a day-granularity SM-2 variant. At the end of
 a round you see how you rated the cards and can retry the missed ones.
 Progress stays on the Kindle. There is no AnkiWeb sync.
 
-Optional AI: **Tools → Kindle Anki → AI settings → Edit AI settings**. Enter endpoint, model, and
-API key **on the Kindle**. The converter does not embed keys in pack JSON. Requests POST
-the card text and images (base64) to the endpoint; plain `http://` sends the key
-unencrypted. To skip typing on the Kindle: click **AI settings** in the converter, paste
-your config, then use **Import AI settings from computer** on the Kindle with the
-4-digit pairing code shown in the converter window — or paste the same fields
-into the **browser import page** (section 3) together with the pairing code
-shown in the Kindle dialog. After 5 wrong codes the converter stops handing
-out the settings; click **Save** in its AI settings again for a new code.
+Optional AI uses one set of settings saved on the Kindle; a pack's own AI
+fields are ignored. **Tools → Kindle Anki → AI settings** offers three ways
+to set it up, matching the three ways to import packs:
+
+- **Phone or computer browser (recommended)**: the Kindle shows a QR code
+  that opens the page's **AI** tab, plus a 4-digit pairing code. Fill in
+  endpoint, model, and API key there, enter the code, and save. The page can
+  write the key but never read it back.
+- **Computer converter over Wi-Fi**: paste your config into the converter's
+  **AI settings**, then enter the computer's IP and the converter's pairing
+  code on the Kindle. After 5 wrong codes the converter stops handing out the
+  settings; click **Save** in its AI settings again for a new code.
+- **Type it on the Kindle**.
+
+Tapping **AI explain** before AI is set up offers to open these choices.
+Requests POST the card text and images (base64) to the endpoint; plain
+`http://` sends the key unencrypted.
 
 Not official Anki. Not AnkiWeb-compatible.

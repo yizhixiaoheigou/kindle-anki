@@ -135,9 +135,9 @@ Windows 用 `py -3` 代替 `python3`。产物:`名字.kindle-anki.json` + `名�
      **KUAL → KOReader → Start KOReader** 启动。
 3. 菜单:**工具 → Kindle Anki**。
 4. 第一次打开卡包会问每天新卡数(1–999,默认 20)。
-5. 可选 AI 功能:电脑上打开转换器(双击 `Kindle-Anki-Import.command`/`.bat`,或 release 里的免安装 app),
-   点「AI 设置」粘贴密钥;Kindle 上选「从电脑导入 AI 设置」,输电脑 IP 和窗口里的 4 位配对码。
-   前提:两边在同一 Wi-Fi。
+5. 可选 AI 功能:Kindle 上选 **工具 → Kindle Anki → AI 设置 → 用手机或电脑浏览器(推荐)**,
+   用手机扫二维码,在网页「AI」页填好接口、模型和 API key,再填 Kindle 上显示的 4 位配对码。
+   前提:两边在同一 Wi-Fi。(也可以在电脑转换器「AI 设置」里粘贴,再在 Kindle 上选「从电脑转换器」。)
 
 ### 故障排查
 

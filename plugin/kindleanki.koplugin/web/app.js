@@ -129,6 +129,8 @@
             setStatus("down", "连不上 Kindle。确认地址和 Kindle 屏幕上显示的一致，再刷新本页。");
         });
         refreshPacks();
+        // The Kindle's "Set up AI" QR code points at #ai.
+        if (location.hash === "#ai") showTab("ai");
         $("file").addEventListener("change", function (event) {
             var file = event.target.files && event.target.files[0];
             if (file) onFile(file);
@@ -540,7 +542,7 @@
         };
         var code = $("ai-code").value.trim();
         if (!/^\d{4}$/.test(code)) {
-            setNote("ai-result", "err", "填 Kindle 导入弹窗里显示的 4 位配对码。");
+            setNote("ai-result", "err", "填 Kindle 弹窗里显示的 4 位配对码。");
             $("ai-code").focus();
             return;
         }
