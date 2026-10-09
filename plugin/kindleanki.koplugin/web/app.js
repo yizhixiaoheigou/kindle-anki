@@ -149,8 +149,12 @@
             setStatus("down", "连不上 Kindle。确认地址和 Kindle 屏幕上显示的一致，再刷新本页。");
         });
         refreshPacks();
-        // The Kindle's "Set up AI" QR code points at #ai.
+        // The Kindle's "Set up AI" QR code points at #ai, also when this page
+        // is already open in the tab the phone reuses.
         if (location.hash === "#ai") showTab("ai");
+        window.addEventListener("hashchange", function () {
+            if (location.hash === "#ai") showTab("ai");
+        });
         $("file").addEventListener("change", function (event) {
             var file = event.target.files && event.target.files[0];
             if (file) onFile(file);
