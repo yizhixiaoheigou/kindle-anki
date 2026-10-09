@@ -9,7 +9,8 @@
 
 ## 1. 安装插件（做一次）
 
-1. Kindle 上先装好 [KOReader](https://koreader.rocks/)。
+1. Kindle 上先装好 [KOReader](https://koreader.rocks/)。v2026.07 及以上版本在卡片里直接显示图片；
+   更早的版本以纯文本显示卡片，图片用「查看图片」按钮打开。
 2. 把文件夹 `kindleanki.koplugin` 拷到 KOReader 的 `plugins` 目录：
    `/mnt/us/koreader/plugins/kindleanki.koplugin/`
    USB 连上电脑时，路径是 `Kindle/koreader/plugins/kindleanki.koplugin/`。

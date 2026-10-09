@@ -11,6 +11,8 @@ official plugin.
 ## 1. Install the plugin (once)
 
 1. Install [KOReader](https://koreader.rocks/) if it is not already on the Kindle.
+   v2026.07 or newer shows card images inside the card; older builds show the
+   card as plain text and open its images from a **View images** button.
 2. Copy the folder `kindleanki.koplugin` into KOReader's `plugins` directory:
    `/mnt/us/koreader/plugins/kindleanki.koplugin/`
    On USB this is `Kindle/koreader/plugins/kindleanki.koplugin/`.
