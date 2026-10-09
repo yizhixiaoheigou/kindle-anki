@@ -8,29 +8,29 @@ The one current hand-off. Rewrite it in place; history goes to
 
 ## Where things stand
 
-- `main` (`4fb65d7`) holds the 2026-10-07 audit fixes and the old-KOReader
-  plain-text fallback. It is 14 commits ahead of `origin/main` and not pushed;
-  pushing is the owner's call (AGENTS.md red line).
-- `feature/ui-redesign` (branched from `main` at `4fb65d7`) holds the
-  plugin and browser-page redesign, the Tools menu move, the Manage packs
-  crash fix, the wireless deploy script with remote restart, and these
-  knowledge docs. Not merged.
-- The maintainer's Kindle (KOReader v2026.07.1) runs `feature/ui-redesign`.
-  Its KOReader SSH server autostarts with key-only login, and remote restart
-  is enabled on it.
-- Full suite on the Mac: 83 tests pass with `KINDLE_ANKI_REQUIRE_TOOLS=1`.
+- `main` holds everything: the 2026-10-07 audit fixes, the old-KOReader
+  plain-text fallback, the plugin and browser-page redesign, the QR code on
+  the import screen, one global AI setting with the same three setup routes
+  as importing packs, and DeepSeek as the suggested AI provider.
+- The maintainer's Kindle (KOReader v2026.07.1) was reset on 2026-10-08:
+  plugin, packs, progress, and AI settings removed, then a fresh plugin
+  installed so the owner can walk the first-run flows. A backup of the old
+  data is on the maintainer's computer. Its KOReader SSH server autostarts
+  with key-only login, and remote restart is enabled.
+- Full suite on the Mac passes with `KINDLE_ANKI_REQUIRE_TOOLS=1`.
 
 ## Next
 
-1. The owner is testing the redesign on the Kindle. Fix what they report,
-   deploy with `scripts/kindle-deploy.sh <kindle-ip>` (it installs, verifies,
-   and restarts KOReader), and use `--crash-log` for crashes. Do not ask for
-   USB.
-2. When the owner approves, merge `feature/ui-redesign` into `main`.
-3. If the owner pushes: watch the first CI run, which is the first one that
-   installs Lua (`.github/workflows/ci.yml`).
-4. The friend on old KOReader needs the new plugin; confirm the plain-text
+1. The owner is walking the first-run flows (import a pack, set up AI) on
+   the Kindle. Fix what they report, deploy with
+   `scripts/kindle-deploy.sh <kindle-ip>` (installs, verifies, restarts
+   KOReader), and use `--crash-log` for crashes. Do not ask for USB.
+2. Watch the first CI run after a push: it is the first one that installs
+   Lua (`.github/workflows/ci.yml`).
+3. A friend on old KOReader needs the new plugin; confirm the plain-text
    cards and the View images button there.
+4. `deepseek-flash` is the owner's chosen default model name; it was not
+   checked against DeepSeek's model list.
 
 ## Not verified on a device
 

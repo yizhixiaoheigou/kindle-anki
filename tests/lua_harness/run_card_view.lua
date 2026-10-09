@@ -379,7 +379,7 @@ do
     local stopped = 0
     WebServerStub.active = {
         ai_code = "4821",
-        url = function() return "http://192.168.5.36:8767/" end,
+        url = function() return "http://192.168.1.20:8767/" end,
         stop = function() stopped = stopped + 1 end,
     }
     plugin = new_plugin(short_card)
@@ -387,7 +387,7 @@ do
     plugin:show_browser_import_dialog()
     local dialog = shown[#shown]
     check("import dialog has a QR code of the page address", #qr_widgets == 1
-        and qr_widgets[1].text == "http://192.168.5.36:8767/")
+        and qr_widgets[1].text == "http://192.168.1.20:8767/")
     check("import dialog shows the pairing code", dialog and dialog.notes
         and table.concat(dialog.notes, "\n"):find("4821", 1, true) ~= nil)
     check("import dialog explains WeChat", dialog and dialog.notes[1]:find("微信", 1, true) ~= nil)
@@ -398,14 +398,14 @@ do
     -- Opened from AI settings: same page, AI tab, pairing code first.
     WebServerStub.active = {
         ai_code = "4821",
-        url = function() return "http://192.168.5.36:8767/" end,
+        url = function() return "http://192.168.1.20:8767/" end,
         stop = function() end,
     }
     shown, qr_widgets = {}, {}
     plugin:show_browser_import_dialog("ai")
     local ai_dialog = shown[#shown]
-    check("AI entry QR opens the AI tab", #qr_widgets == 1 and qr_widgets[1].text == "http://192.168.5.36:8767/#ai")
-    check("AI entry shows the plain address", ai_dialog.url == "http://192.168.5.36:8767/")
+    check("AI entry QR opens the AI tab", #qr_widgets == 1 and qr_widgets[1].text == "http://192.168.1.20:8767/#ai")
+    check("AI entry shows the plain address", ai_dialog.url == "http://192.168.1.20:8767/")
     check("AI entry leads with the pairing code", ai_dialog.notes[1]:find("4821", 1, true) ~= nil
         and ai_dialog.title == "用手机或电脑浏览器设置 AI")
 
