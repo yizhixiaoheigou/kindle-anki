@@ -154,7 +154,7 @@ Copy **the json and the media folder** (not the zip) to:
 ```
 
 Create the directory if needed. Alternative: copy just the zip anywhere onto
-the device and let the user pick it via the plugin's "Import pack" menu.
+the device and let the user pick it via **Import packs → A file already on this Kindle**.
 
 ### Step 5: finish (tell the user each item)
 

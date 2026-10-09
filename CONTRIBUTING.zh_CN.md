@@ -14,6 +14,11 @@ python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 ```
 
 请用带 Tcl/Tk 的 Python——UI 测试在顶层 import `tkinter`。
+插件测试需要带 luasocket 的 `lua`，浏览器转换器测试需要 `node`，缺了会静默跳过。加上
+`KINDLE_ANKI_REQUIRE_TOOLS=1` 运行可让缺工具直接失败，CI 就是这么跑的。
+
+想在 Kindle 上试改动：`scripts/kindle-deploy.sh <Kindle IP>` 通过 KOReader 的 SSH 服务装插件
+并重启 KOReader；加 `--crash-log` 可查看 KOReader 崩溃日志末尾。首次配置方法写在脚本开头。
 
 不要加入 `tools/anki_importer.py` 或 `tools/folo_*.py`。
 

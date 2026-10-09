@@ -124,7 +124,7 @@ Windows 用 `py -3` 代替 `python3`。产物:`名字.kindle-anki.json` + `名�
 <挂载点>/kindle-anki/packs/名字.kindle-anki.media/
 ```
 
-目录不存在就创建。备选:只拷 zip 到设备任意位置,让用户用菜单「导入卡包」选它。
+目录不存在就创建。备选:只拷 zip 到设备任意位置,让用户用菜单「导入卡包 → Kindle 里已有的卡包文件」选它。
 
 ### 第 5 步:收尾(必须逐条告诉用户)
 

@@ -7,28 +7,37 @@
 # Kindle Anki
 
 Kindle Anki is a KOReader plugin that studies Anki `.apkg` decks (short-answer
-and choice, with images) on a jailbroken Kindle. Conversion happens on a
-computer. Progress stays on the Kindle.
+and choice, with images) on a jailbroken Kindle. Scan a QR code on the Kindle
+with your phone, pick the `.apkg` in the page that opens, and the converted
+pack lands on the Kindle. Progress stays on the Kindle.
 
 **Not official Anki. Not AnkiWeb-compatible. Not an Amazon product. Not an
 official KOReader plugin.**
 
 ## Screenshots
 
-The converter on a computer:
+The page the Kindle opens on your phone: pick the fields, check the Kindle
+preview, send. The **AI** tab comes pre-filled for DeepSeek.
+
+<p align="center">
+  <img src="screenshots/web-import.jpg" width="32%" alt="Browser page: choosing front and back fields with a Kindle preview">
+  <img src="screenshots/web-ai.jpg" width="32%" alt="Browser page: AI settings with DeepSeek filled in">
+</p>
+
+On the Kindle (photos of an earlier version of the study screens):
+
+<p align="center">
+  <img src="screenshots/kindle-study.jpg" width="32%" alt="Studying a poem card on the Kindle">
+  <img src="screenshots/kindle-ai.jpg" width="32%" alt="AI explanation on the Kindle">
+</p>
+
+The optional computer converter:
 
 <p align="center">
   <img src="screenshots/converter-idle.jpg" width="24%" alt="Converter, idle">
   <img src="screenshots/converter-mapping.jpg" width="24%" alt="Converter, field mapping">
   <img src="screenshots/converter-converting.jpg" width="24%" alt="Converter, converting">
   <img src="screenshots/converter-success.jpg" width="24%" alt="Converter, done and sharing over Wi-Fi">
-</p>
-
-The result on the Kindle:
-
-<p align="center">
-  <img src="screenshots/kindle-study.jpg" width="32%" alt="Studying a poem card on the Kindle">
-  <img src="screenshots/kindle-ai.jpg" width="32%" alt="AI explanation on the Kindle">
 </p>
 
 ## Who this is for
@@ -43,14 +52,8 @@ is your own decision and your own risk.
 
 - Jailbroken Kindle with KOReader. v2026.07 or newer shows card images inline;
   older builds show cards as plain text with a **View images** button.
-- A phone or computer for conversion (the browser page needs no install).
-- Same **home** Wi-Fi for import.
-
-Prebuilt converter apps are unsigned local builds (a macOS universal2 `.app`
-and a Windows onedir) — see [packaging/README.md](packaging/README.md). Without
-one, install Python 3 with Tcl/Tk from python.org and use
-`desktop/Kindle-Anki-Import.command` (macOS) or `desktop/Kindle-Anki-Import.bat`
-(Windows).
+- A phone or computer with a browser. Nothing to install.
+- Kindle and phone on the same **home** Wi-Fi.
 
 ## Install the plugin
 
@@ -61,42 +64,50 @@ one, install Python 3 with Tcl/Tk from python.org and use
 Unzip so `kindleanki.koplugin/` is a folder. Copy it to
 `/mnt/us/koreader/plugins/kindleanki.koplugin/`. If upgrading from
 `foloanki.koplugin`, delete the old folder. Eject. **Fully quit KOReader and
-reopen.**
+reopen.** The plugin is under **Tools → Kindle Anki**.
 
 Details: [docs/USER_GUIDE.md](docs/USER_GUIDE.md). Old paths:
 [docs/MIGRATION.md](docs/MIGRATION.md).
 
-## Convert and import from a phone/computer browser (no tools needed)
+## Import packs
 
-**Tools → Kindle Anki → Import packs → Import via browser**, then open the shown
-address (`http://<kindle-ip>:8767`) on any phone or computer on the same Wi-Fi.
-Pick the `.apkg` in that page — the conversion runs **inside the browser**, and
-the finished pack lands on the Kindle directly. Nothing is installed on the
-phone, no computer converter is needed, and the Kindle itself never unpacks
-Anki files. The page can also hand you the `.zip` as a fallback download, and
-it manages what is already on the device: **Delete** removes a pack together
-with its study progress and AI chats.
+**Tools → Kindle Anki → Import packs** offers three ways:
 
-## Convert a deck on a computer (alternative)
+- **Phone or computer browser (recommended).** The Kindle shows a QR code and
+  its address (`http://<kindle-ip>:8767`). Scan it with the phone camera, pick
+  the `.apkg`, tap **正面** / **背面** on the fields you want while a Kindle
+  preview shows the first note, and tap **转换并发送到 Kindle**. The
+  conversion runs inside the browser; the Kindle never unpacks Anki files.
+  Scanned with WeChat or another in-app browser, the page explains how to
+  switch to the real browser. Its **卡包** tab lists and deletes packs on the
+  Kindle.
+- **Computer converter over Wi-Fi.** Convert on a computer (below), keep the
+  window open, and enter the IP it shows. Port 8766 has **no password** and is
+  for home Wi-Fi only.
+- **A file already on this Kindle.** Copy a `.kindle-anki.zip` over USB and
+  pick it.
 
-macOS: `desktop/Kindle-Anki-Import.command` (needs python3 + Tk) or
-`dist/Kindle Anki Import.app` if present. Windows: `desktop/Kindle-Anki-Import.bat`,
-or the `Kindle-Anki-Import` onedir if present.
+The page closes by itself after 30 minutes without visits.
 
-Pick `.apkg`, name the pack (defaults to the deck name), map front/back
-fields, Convert. Output: `name.kindle-anki.zip`.
+### Computer converter (optional)
 
-## Import over Wi-Fi
-
-Keep the converter open. **Tools → Kindle Anki → Import packs → Import from computer** and
-type the printed IP. The LAN server on port 8766 has **no password** and is
-home-Wi-Fi only. USB **Import pack** is the fallback.
+Prebuilt converter apps are unsigned local builds (a macOS universal2 `.app`
+and a Windows onedir) — see [packaging/README.md](packaging/README.md). Without
+one, install Python 3 with Tcl/Tk from python.org and use
+`desktop/Kindle-Anki-Import.command` (macOS) or `desktop/Kindle-Anki-Import.bat`
+(Windows). Pick `.apkg`, name the pack, map front/back fields, Convert.
+Output: `name.kindle-anki.zip`.
 
 ## Study
 
-Start studying / starred / retry missed / Browse. Daily new-card count is asked
-on first open of a pack (1–999). Again = 10 minutes. Hard/Good/Easy use day
-SM-2.
+**Tools → Kindle Anki → Open packs** lists your packs with what is left to
+study today. A deck screen shows today's reviews and new cards; **Start
+studying**, missed cards, starred cards, and browse-all carry their counts.
+The first open asks for the daily new-card count (1–999). On a card, **Show
+back** puts the answer under the question, and the four ratings sit in one
+row with the next interval on each. Again = 10 minutes; Hard/Good/Easy use a
+day-based SM-2. A round ends with a summary and offers the missed cards.
+The menu has **Language / 语言** (Simplified Chinese or English).
 
 ## Optional AI
 
@@ -119,8 +130,9 @@ Plain `http://` endpoints send the key unencrypted — prefer `https://`.
 
 ## Versus KAnki / anki.koplugin
 
-This tool **converts existing `.apkg`** (choice + images) on a computer and
-reviews them in KOReader with an independent scheduler.
+This tool **converts existing `.apkg`** decks (choice + images) in a phone or
+computer browser, or with a desktop converter, and reviews them in KOReader
+with its own scheduler.
 
 ## Development
 
@@ -128,6 +140,10 @@ reviews them in KOReader with an independent scheduler.
 python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 ```
 
+The plugin tests need `lua` with luasocket, and the browser-converter tests
+need `node`; without them those tests skip. `KINDLE_ANKI_REQUIRE_TOOLS=1`
+makes them fail instead (CI sets it). `scripts/kindle-deploy.sh <kindle-ip>`
+installs the plugin on a Kindle over KOReader's SSH server, no USB needed.
 See [CONTRIBUTING.md](CONTRIBUTING.md). Pack format: [docs/PACK_FORMAT.md](docs/PACK_FORMAT.md).
 
 ## License

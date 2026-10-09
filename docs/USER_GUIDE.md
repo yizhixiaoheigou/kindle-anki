@@ -55,7 +55,7 @@ The converter never uploads your deck. It does not write API keys into the pack.
 ### Easiest: convert in a phone/computer browser (no converter needed)
 
 1. Kindle and phone/computer on the same Wi-Fi.
-2. **Tools → Kindle Anki → Import packs → Import via browser**. A dialog shows
+2. **Tools → Kindle Anki → Import packs → Phone or computer browser (recommended)**. A dialog shows
    the address, for example `http://192.168.1.20:8767/`, and the same address
    as a QR code.
 3. Scan the QR code with the phone camera, or type the address in a browser.
@@ -101,13 +101,13 @@ type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
 Port **8766** has no password. Home Wi-Fi only.
 
 1. Kindle and computer on the same Wi-Fi.
-2. **Tools → Kindle Anki → Import packs → Import from computer**.
+2. **Tools → Kindle Anki → Import packs → Computer converter over Wi-Fi**.
 3. Type that IP (it is remembered next time).
 4. Pick the pack. The plugin downloads it itself.
 
 If macOS asks to allow Python incoming connections, allow it on a home network.
 
-USB is only a fallback: copy the zip onto the Kindle and use **Import pack**.
+USB is only a fallback: copy the zip onto the Kindle and use **Import packs → A file already on this Kindle**.
 
 To remove a pack: **Tools → Kindle Anki → Manage packs**, or the menu icon
 at the top left of **Open packs**. Progress and AI chats for that pack go with it.
