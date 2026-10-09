@@ -56,7 +56,7 @@ and [CHANGELOG.md](../CHANGELOG.md). Single-language by design (see AGENTS.md).
 - Pitfall: `for _, x in ...` rebinds the `_` translator; calling `_()` inside
   the loop crashes KOReader. A static test now rejects it.
 
-## 2026-10-07/08 — UI redesign and wireless deploy (branch `feature/ui-redesign`)
+## 2026-10-07/08 — UI redesign and wireless deploy (merged into `main` 2026-10-08)
 
 - Plugin: full-screen pack list with today's counts, deck screen with today's
   plan and counted actions, single-deck packs skip the deck list, answer
@@ -73,3 +73,23 @@ and [CHANGELOG.md](../CHANGELOG.md). Single-language by design (see AGENTS.md).
   Never kill KOReader instead: it drops unsaved settings and progress.
 - The plugin now flushes batched progress on KOReader's FlushSettings
   (`8cfd6ea`).
+
+## 2026-10-08/09 — phone-first setup, one AI setting, first push since 0.1.0
+
+- The Import via browser screen shows the page address as a QR code
+  (KOReader's `QRWidget`, built in `pcall` with the old text box as
+  fallback). The page detects WeChat and other in-app browsers and says how
+  to open it in the phone's browser (`91c03c8`).
+- AI uses only the Kindle's own settings; a pack's `ai` block is ignored,
+  which retired the 2026-09 pack-endpoint consent prompt (audit H2's
+  mitigation). AI settings got the same three routes as Import packs; the
+  browser route's QR code opens the page's AI tab via `#ai` (`aa75187`,
+  `aa69f6c`).
+- DeepSeek (`https://api.deepseek.com`, `deepseek-flash`) is pre-filled while
+  the Kindle has no AI settings; `/api/info` exposes only `ai_configured`
+  (`8232f84`).
+- The maintainer's Kindle was reset to a first-run state on 2026-10-08 (old
+  data backed up off the device).
+- READMEs and guides rewritten around the phone flow, with browser-page
+  screenshots (`f66cd9a`). 28 commits pushed on 2026-10-09; the first CI run
+  that installs Lua passed on Python 3.11–3.13 (Actions run 37877814101).

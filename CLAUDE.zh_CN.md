@@ -10,8 +10,8 @@
 
 ## 当前状态
 
-- `main` 包含 2026-10-07 审计修复，领先 `origin/main`，尚未 push。
-- `feature/ui-redesign` 包含界面重设计和无线部署脚本，维护者正在 Kindle 上测试，测完再合并。
+- `main` 与 `origin/main` 一致（2026-10-09 已推送），CI 在装了 Lua 和 node 的环境下全绿。
+- 维护者的 Kindle 比 `main` 落后一次部署；维护者正在上面走首次使用流程。
 - 详情与下一步见 [`docs/HANDOFF.md`](docs/HANDOFF.md)（英文），历程见 [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md)。
 
 ## 命令

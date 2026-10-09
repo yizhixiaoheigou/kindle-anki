@@ -10,8 +10,8 @@ Product boundaries, red lines, and doc rules live in [`AGENTS.md`](./AGENTS.md) 
 
 ## Current state
 
-- `main` has the 2026-10-07 audit fixes; it is ahead of `origin/main` and not pushed.
-- `feature/ui-redesign` holds the UI redesign and the wireless deploy script; the owner is testing it on the Kindle before it merges.
+- `main` equals `origin/main` (pushed 2026-10-09) and CI is green with Lua and node.
+- The maintainer's Kindle is one deploy behind `main`; the owner is testing the first-run flows on it.
 - Details and next steps: [`docs/HANDOFF.md`](docs/HANDOFF.md). History: [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md).
 
 ## Commands
