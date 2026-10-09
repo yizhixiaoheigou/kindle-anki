@@ -106,7 +106,8 @@ in one of three ways:
 
 - **Phone or computer browser (recommended).** The Kindle shows a QR code and
   a 4-digit pairing code. Scan it, fill in endpoint, model, and API key on the
-  page's **AI** tab, enter the code, and save.
+  page's **AI** tab, enter the code, and save. DeepSeek's endpoint and model
+  are filled in until you set your own, so a DeepSeek user only pastes a key.
 - **Computer converter over Wi-Fi.** Paste the config into the converter's
   **AI settings**, then enter the computer's IP and the converter's pairing
   code on the Kindle.

@@ -143,7 +143,10 @@ to set it up, matching the three ways to import packs:
 - **Phone or computer browser (recommended)**: the Kindle shows a QR code
   that opens the page's **AI** tab, plus a 4-digit pairing code. Fill in
   endpoint, model, and API key there, enter the code, and save. The page can
-  write the key but never read it back.
+  write the key but never read it back. On a Kindle without AI settings the
+  page fills in DeepSeek (`https://api.deepseek.com`, model `deepseek-flash`)
+  so only the key is left to paste; change both for another provider. Once
+  AI is set up, empty fields keep what the Kindle already has.
 - **Computer converter over Wi-Fi**: paste your config into the converter's
   **AI settings**, then enter the computer's IP and the converter's pairing
   code on the Kindle. After 5 wrong codes the converter stops handing out the

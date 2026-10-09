@@ -90,6 +90,25 @@
     // Tabs
     // ------------------------------------------------------------------
 
+    // Suggested provider, filled in while the Kindle has no AI settings yet.
+    // The plugin's own AI dialog uses the same pair (main.lua).
+    var AI_DEFAULTS = { endpoint: "https://api.deepseek.com", model: "deepseek-flash" };
+
+    // A fresh Kindle gets the defaults so only the key is left to paste.
+    // One that is already set up keeps its own: empty fields are not sent,
+    // so a key change never overwrites the endpoint or model.
+    function prefillAi(configured) {
+        if (configured) {
+            $("ai-endpoint").placeholder = "留空就保持 Kindle 上现在的接口";
+            $("ai-model").placeholder = "留空就保持 Kindle 上现在的模型";
+            $("ai-state").textContent = "这台 Kindle 已经设置过 AI。只填要改的项，其他留空。";
+            return;
+        }
+        if (!$("ai-endpoint").value) $("ai-endpoint").value = AI_DEFAULTS.endpoint;
+        if (!$("ai-model").value) $("ai-model").value = AI_DEFAULTS.model;
+        $("ai-state").textContent = "已填好 DeepSeek 的接口和模型，只需填你的 API key。用别家就直接改这两项。";
+    }
+
     var TABS = ["import", "packs", "ai"];
     function showTab(name) {
         TABS.forEach(function (tab) {
@@ -125,6 +144,7 @@
         });
         fetch("/api/info").then(function (response) { return response.json(); }).then(function (info) {
             setStatus("ok", "已连接 Kindle" + (info.ip ? "（" + info.ip + "）" : ""));
+            prefillAi(info.ai_configured === true);
         }).catch(function () {
             setStatus("down", "连不上 Kindle。确认地址和 Kindle 屏幕上显示的一致，再刷新本页。");
         });

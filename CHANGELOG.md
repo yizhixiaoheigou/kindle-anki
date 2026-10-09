@@ -4,6 +4,10 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- AI setup suggests DeepSeek: on a Kindle without AI settings, the browser
+  page and the Kindle's own AI dialog fill in `https://api.deepseek.com` and
+  `deepseek-flash`, so only the key is left to enter. A Kindle that already
+  has AI settings keeps them; the page learns only whether AI is set up.
 - AI now uses only the settings saved on the Kindle; a pack's `ai` block is
   ignored. This removes the pack-endpoint confirmation, since a local key can
   no longer go to a server a pack names.

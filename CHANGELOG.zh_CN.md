@@ -4,6 +4,9 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 未发布
 
+- AI 设置默认推荐 DeepSeek:Kindle 还没设置 AI 时,网页和 Kindle 上的 AI 对话框都预填
+  `https://api.deepseek.com` 和 `deepseek-flash`,只需填 key。已经设置过的保持原样;
+  网页只知道"是否已设置",读不到设置内容。
 - AI 只用 Kindle 上保存的设置,卡包里的 `ai` 块一律忽略。本机密钥不会再被发往卡包指定的
   服务器,原来那个"卡包自带接口"确认框也随之去掉。
 - 「AI 设置」改成和「导入卡包」一样的三种方式:用手机或电脑浏览器(二维码直接打开网页的

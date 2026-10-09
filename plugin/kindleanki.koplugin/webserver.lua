@@ -247,6 +247,9 @@ function WebServer:new(options)
         on_ai_settings = options.on_ai_settings,
         on_delete_pack = options.on_delete_pack,
         on_idle_stop = options.on_idle_stop,
+        -- Returns true when the Kindle already has AI settings. Only this
+        -- yes/no reaches the page; the settings themselves never do.
+        ai_configured = options.ai_configured,
         ai_code = options.ai_code,
         ai_failures = 0,
         upload_path = options.upload_path,
@@ -811,6 +814,7 @@ function WebServer:dispatch(client, request)
                 ip = detect_ip(),
                 port = self.port,
                 packs_dir = self.store:pack_dir(),
+                ai_configured = type(self.ai_configured) == "function" and self.ai_configured() == true,
             })
         end
         if request.path == "/api/packs" then

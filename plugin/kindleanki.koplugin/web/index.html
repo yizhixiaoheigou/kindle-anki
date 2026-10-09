@@ -181,7 +181,8 @@
 
   /* Messages. */
   .note { border-radius: var(--radius-sm); padding: 12px 14px; font-size: 15px; margin: 12px 0 0;
-    white-space: pre-line; word-break: break-all; }
+    white-space: pre-line; overflow-wrap: anywhere; }
+  #ai-state { margin: 0 0 16px; }
   .note.ok { background: var(--ok-soft); color: var(--ok); }
   .note.err { background: var(--danger-soft); color: var(--danger); }
   .note.info { background: var(--action-soft); color: var(--ink); }
@@ -285,10 +286,11 @@
 
     <section id="view-ai" role="tabpanel" aria-labelledby="tab-ai" hidden>
       <p class="lede">填好后保存到 Kindle，学习时就能用「AI 解析」。密钥只存在 Kindle 上，这个网页读不回来。局域网里是明文传输，只在家里的 Wi-Fi 用。</p>
+      <p class="note info" id="ai-state"></p>
       <div class="form">
         <div>
           <label class="field-label" for="ai-endpoint">接口地址</label>
-          <input type="url" id="ai-endpoint" placeholder="https://api.example.com/v1" autocomplete="off" spellcheck="false">
+          <input type="url" id="ai-endpoint" placeholder="https://api.deepseek.com" autocomplete="off" spellcheck="false">
         </div>
         <div>
           <label class="field-label" for="ai-model">模型名称</label>

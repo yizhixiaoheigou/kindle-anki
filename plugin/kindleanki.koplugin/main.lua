@@ -506,6 +506,10 @@ function KindleAnki:attach_webserver(server)
     server.store = self.store
     server.on_result = function(result) self:on_web_import_result(result) end
     server.on_ai_settings = function(payload) return self:on_web_ai_settings(payload) end
+    server.ai_configured = function()
+        local config = self:ai_config()
+        return config.endpoint ~= "" or config.api_key ~= ""
+    end
     server.on_delete_pack = function(pack) return self:on_web_delete_pack(pack) end
     server.on_idle_stop = function()
         if WebServer.active == server then WebServer.active = nil end
@@ -1493,8 +1497,17 @@ function KindleAnki:ai_config()
     }
 end
 
+-- Suggested provider, filled in until the user sets their own. The browser
+-- page uses the same pair (web/app.js AI_DEFAULTS).
+local AI_DEFAULT_ENDPOINT = "https://api.deepseek.com"
+local AI_DEFAULT_MODEL = "deepseek-flash"
+
 function KindleAnki:open_ai_settings()
     local config = self:ai_config()
+    if config.endpoint == "" and config.api_key == "" then
+        config.endpoint = AI_DEFAULT_ENDPOINT
+        if config.model == "" then config.model = AI_DEFAULT_MODEL end
+    end
     local dialog
     dialog = MultiInputDialog:new{
         title = _("AI settings"),

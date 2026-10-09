@@ -366,6 +366,7 @@ do
     check("GET /api/info is 200", head:find("200 OK", 1, true) ~= nil)
     check("api/info identifies the app", body:find("kindle-anki", 1, true) ~= nil)
     check("api/info carries the port", body:find('"port":18799', 1, true) ~= nil)
+    check("api/info says AI is not set up", body:find('"ai_configured":false', 1, true) ~= nil)
     local shown_ip = body:match('"ip":"(%d+%.%d+%.%d+%.%d+)"')
     check("api/info shows a reachable ip",
         shown_ip ~= nil
@@ -699,6 +700,20 @@ do
     pump_until(function() return server.upload_conn == nil end, 5)
     check("abandoned upload removes its temp file",
         io.open(upload_dir .. "/.upload.kindle-anki.zip", "rb") == nil)
+end
+
+do
+    -- Only a yes/no about AI reaches the page, never the settings.
+    server.ai_configured = function() return true end
+    local client = connect()
+    client:send("GET /api/info HTTP/1.1\r\nHost: kindle\r\n\r\n")
+    local _, body = drive(client)
+    check("api/info says AI is set up", body:find('"ai_configured":true', 1, true) ~= nil)
+    check("api/info never carries AI settings", body:find("endpoint", 1, true) == nil
+        and body:find("api_key", 1, true) == nil)
+    client:close()
+    reap()
+    server.ai_configured = nil
 end
 
 -- Cross-site and DNS-rebinding guards.

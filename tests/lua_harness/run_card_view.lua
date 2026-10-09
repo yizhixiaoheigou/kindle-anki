@@ -39,6 +39,7 @@ local function widget_class()
     function class:new(args)
         args = args or {}
         args._class = class
+        args.onShowKeyboard = args.onShowKeyboard or function() end
         return args
     end
     return class
@@ -447,6 +448,20 @@ do
     plugin:open_ai_input(short_card, false)
     check("missing AI offers to set it up", shown[#shown] and shown[#shown]._class == classes["ui/widget/confirmbox"]
         and shown[#shown].text:find("AI 还没设置", 1, true) ~= nil)
+
+    -- Typing AI settings on the Kindle starts from the DeepSeek defaults...
+    shown = {}
+    plugin:open_ai_settings()
+    local fields = shown[#shown].fields
+    check("fresh AI dialog suggests DeepSeek", fields[1].text == "https://api.deepseek.com"
+        and fields[2].text == "deepseek-flash" and fields[3].text == "")
+    -- ...but never replaces settings the user already has.
+    saved.ai = { endpoint = "https://other.example/v1", model = "other", api_key = "sk-x" }
+    shown = {}
+    plugin:open_ai_settings()
+    fields = shown[#shown].fields
+    check("existing AI settings are kept", fields[1].text == "https://other.example/v1" and fields[2].text == "other")
+    saved.ai = nil
 
     -- The AI submenu mirrors the import submenu.
     local menu = {}
