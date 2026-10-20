@@ -340,7 +340,17 @@ check("new: image-only front has no empty block", viewer.text:find("<div style=\
 plugin:show_answer(nil, nil)
 viewer = last_viewer()
 check("new: image-only back embeds image", viewer.text:find('src="p.kindle-anki.media/a.png"', 1, true) ~= nil)
-check("new: image-only back starts with the rule", viewer.text:find("^<div style=\"border%-top") ~= nil)
+-- The question's images stay above the rule, where its text would be.
+local question_at = viewer.text:find('src="p.kindle-anki.media/q.png"', 1, true)
+local rule_at = viewer.text:find('<div style="border-top', 1, true)
+local answer_at = viewer.text:find('src="p.kindle-anki.media/a.png"', 1, true)
+check("new: image-only front shows above the rule on the back", question_at ~= nil and rule_at ~= nil
+    and question_at < rule_at and rule_at < answer_at)
+check("new: image-only front starts the back", viewer.text:find("^<div style=\"text%-align:center") ~= nil)
+plugin = new_plugin(short_card)
+plugin:show_answer(nil, nil)
+check("new: a front with text keeps its images off the back",
+    last_viewer().text:find("front.png", 1, true) == nil)
 
 TextViewer.html_text_formats = nil
 plugin = new_plugin(image_only_card)
@@ -351,7 +361,57 @@ check("old: image-only front image button", find_button(viewer, "查看图片（
 plugin:show_answer(nil, nil)
 viewer = last_viewer()
 check("old: image-only back is just the rule", viewer.text == "────────")
-check("old: image-only back image button", find_button(viewer, "查看图片（1）") ~= nil)
+local both = find_button(viewer, "查看图片（2）")
+check("old: image-only back offers question and answer images", both ~= nil)
+if both then
+    shown = {}
+    both.callback()
+    local list = shown[#shown] and shown[#shown].image
+    check("old: question image comes first", type(list) == "table" and #list == 2
+        and list[1]().path == "/mnt/us/kindle-anki/packs/p.kindle-anki.media/q.png"
+        and list[2]().path == "/mnt/us/kindle-anki/packs/p.kindle-anki.media/a.png")
+end
+plugin = new_plugin(short_card)
+plugin:show_answer(nil, nil)
+check("old: a front with text keeps its button to back images", find_button(last_viewer(), "查看图片（2）") ~= nil)
+
+-- Typing an answer to an image-only question: say what the question is.
+local InputDialog = classes["ui/widget/inputdialog"]
+for _, card in ipairs({ image_only_card, short_card }) do
+    plugin = new_plugin(card)
+    plugin:show_card()
+    shown = {}
+    find_button(last_viewer(), "输入答案").callback()
+    local typing = shown[#shown]
+    local expected = card.front ~= "" and card.front or "这张卡的题目是图片。"
+    check("typing dialog describes the question (" .. card.id .. ")", typing and typing._class == InputDialog
+        and typing.description == expected)
+end
+
+-- ------------------------------------------------------------------
+-- Progress is written out however the card viewer closes
+-- ------------------------------------------------------------------
+
+for _, build in ipairs({ "new", "old" }) do
+    TextViewer.html_text_formats = build == "new" and NEW_TEXTVIEWER_FORMATS or nil
+    plugin = new_plugin(short_card)
+    plugin:show_card()
+    last_viewer().close_callback()
+    check(build .. ": closing the question flushes progress", plugin.flushes == 1)
+    plugin:show_answer(nil, nil)
+    last_viewer().close_callback()
+    check(build .. ": closing the answer flushes progress", plugin.flushes == 2)
+end
+plugin = new_plugin(short_card)
+for _, handler in ipairs({ "onFlushSettings", "onSaveSettings", "onSuspend", "onCloseWidget" }) do
+    check(handler .. " flushes progress and lets the event through", plugin[handler](plugin) == nil)
+end
+check("every handler flushed", plugin.flushes == 4)
+plugin.store = nil
+check("handlers without a store do nothing", pcall(function()
+    plugin:onSuspend()
+    plugin:onCloseWidget()
+end))
 
 -- ------------------------------------------------------------------
 -- AI conversation paging on both builds
@@ -483,6 +543,40 @@ do
     plugin:open_ai_input(short_card, false)
     check("missing AI offers to set it up", shown[#shown] and shown[#shown]._class == classes["ui/widget/confirmbox"]
         and shown[#shown].text:find("AI 还没设置", 1, true) ~= nil)
+
+    -- The Pinyin keyboard is only for the question box: the reader's own
+    -- layout is back once the dialog's keyboard is built.
+    local reader_settings = {}
+    G_reader_settings = {
+        readSetting = function(_, key) return reader_settings[key] end,
+        saveSetting = function(_, key, value) reader_settings[key] = value end,
+        delSetting = function(_, key) reader_settings[key] = nil end,
+    }
+    local InputDialog = classes["ui/widget/inputdialog"]
+    local real_new = InputDialog.new
+    local layout_when_built
+    InputDialog.new = function(class, args)
+        layout_when_built = reader_settings.keyboard_layout
+        return real_new(class, args)
+    end
+    saved.ai = { endpoint = "https://kindle.example/v1", model = "m", api_key = "sk-kindle" }
+    for _, case in ipairs({
+        { locale = "zh_CN", before = "en", built = "zh_CN" },
+        { locale = "zh_CN", before = nil, built = "zh_CN" },
+        { locale = "en", before = "de", built = "de" },
+    }) do
+        require("i18n").set_locale(case.locale)
+        reader_settings.keyboard_layout = case.before
+        layout_when_built = "unset"
+        plugin:open_ai_input(short_card, false)
+        local label = case.locale .. " from " .. tostring(case.before)
+        check("AI question keyboard (" .. label .. ")", layout_when_built == case.built)
+        check("AI question restores the layout (" .. label .. ")", reader_settings.keyboard_layout == case.before)
+    end
+    require("i18n").set_locale("zh_CN")
+    InputDialog.new = real_new
+    G_reader_settings = nil
+    saved.ai = nil
 
     -- Typing AI settings on the Kindle starts from the DeepSeek defaults...
     shown = {}

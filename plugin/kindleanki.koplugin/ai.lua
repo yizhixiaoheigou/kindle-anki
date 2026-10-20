@@ -14,6 +14,7 @@ AI.MAX_HISTORY_MESSAGES = 12
 AI.MAX_RESPONSE_CHARS = 8000
 AI.MAX_IMAGE_BYTES = 4 * 1024 * 1024
 AI.MAX_IMAGE_TOTAL_BYTES = 12 * 1024 * 1024
+AI.MAX_PROVIDER_ERROR_CHARS = 200
 local SKIP_CONTENT_TYPES = {
     reasoning = true,
     thinking = true,
@@ -240,14 +241,14 @@ function AI.build_messages(config, card, history, question, revealed, image_path
     local context = card_context(card, true)
     local context_content = { { type = "text", text = context } }
     local total_image_bytes = 0
+    -- An image that is missing, too large, or in another format is left out;
+    -- the card text and the other images still go, so AI can still answer.
     for _index, path in ipairs(image_paths or {}) do
-        local image, size_or_error = image_part(path)
-        if not image then return nil, size_or_error end
-        total_image_bytes = total_image_bytes + size_or_error
-        if total_image_bytes > AI.MAX_IMAGE_TOTAL_BYTES then
-            return nil, _("Card images are too large for one AI request")
+        local image, size = image_part(path)
+        if image and total_image_bytes + size <= AI.MAX_IMAGE_TOTAL_BYTES then
+            total_image_bytes = total_image_bytes + size
+            table.insert(context_content, image)
         end
-        table.insert(context_content, image)
     end
     table.insert(messages, {
         role = "user",
@@ -269,7 +270,7 @@ function AI.build_messages(config, card, history, question, revealed, image_path
         role = "user",
         content = trim(question),
     })
-    return messages
+    return messages, #context_content - 1
 end
 
 local function request_sync(request, body)
@@ -297,17 +298,7 @@ local function request_sync(request, body)
     }
 end
 
-function AI:request(config, card, history, question, revealed, image_paths)
-    local url = endpoint_for(config.endpoint)
-    if not url then return { ok = false, error = _("AI endpoint must be an http:// or https:// URL") } end
-    if trim(config.model) == "" then return { ok = false, error = _("AI model is not configured") } end
-    if trim(config.api_key) == "" then return { ok = false, error = _("AI API key is not configured in the pack or Kindle settings") } end
-    if trim(question) == "" then return { ok = false, error = _("Question is empty") } end
-
-    local messages, message_error = self.build_messages(
-        config, card, history, question, revealed, image_paths
-    )
-    if not messages then return { ok = false, error = message_error } end
+local function post_chat(url, config, messages)
     local payload = {
         model = trim(config.model),
         messages = messages,
@@ -316,7 +307,7 @@ function AI:request(config, card, history, question, revealed, image_paths)
         max_tokens = 4096,
     }
     local body = JSON.encode(payload)
-    local response = request_sync({
+    return request_sync({
         url = url,
         method = "POST",
         headers = {
@@ -326,11 +317,53 @@ function AI:request(config, card, history, question, revealed, image_paths)
             ["Content-Length"] = tostring(#body),
         },
     }, body)
+end
+
+-- The provider's own reason for a refused request ({"error": {"message":
+-- ...}} in the OpenAI shape), shortened for the Kindle message box.
+local function provider_error(body)
+    local ok, decoded = pcall(JSON.decode, body or "")
+    if not ok or type(decoded) ~= "table" then return nil end
+    local err = decoded.error
+    local message = type(err) == "table" and err.message or err
+    if type(message) ~= "string" then message = decoded.message end
+    if type(message) ~= "string" then return nil end
+    message = kindle_safe_text(trim(message:gsub("%s+", " ")))
+    if message == "" then return nil end
+    local chars = util.splitToChars(message)
+    if #chars > AI.MAX_PROVIDER_ERROR_CHARS then
+        message = table.concat(chars, "", 1, AI.MAX_PROVIDER_ERROR_CHARS) .. "…"
+    end
+    return message
+end
+
+function AI:request(config, card, history, question, revealed, image_paths)
+    local url = endpoint_for(config.endpoint)
+    if not url then return { ok = false, error = _("AI endpoint must be an http:// or https:// URL") } end
+    if trim(config.model) == "" then return { ok = false, error = _("AI model is not configured") } end
+    if trim(config.api_key) == "" then return { ok = false, error = _("AI API key is not configured in the pack or Kindle settings") } end
+    if trim(question) == "" then return { ok = false, error = _("Question is empty") } end
+
+    local messages, image_count = self.build_messages(
+        config, card, history, question, revealed, image_paths
+    )
+    local response = post_chat(url, config, messages)
+    local code = tonumber(response.code)
+    -- Text-only models (DeepSeek's chat API, the suggested default) refuse
+    -- image parts. Ask once more with the card text alone.
+    if image_count > 0 and (code == 400 or code == 422) then
+        messages = self.build_messages(config, card, history, question, revealed, nil)
+        response = post_chat(url, config, messages)
+        code = tonumber(response.code)
+    end
     if response.error then return { ok = false, error = _("AI request failed") } end
 
-    local code = tonumber(response.code)
     if not code then return { ok = false, error = _("AI request failed without an HTTP response") } end
     if code < 200 or code >= 300 then
+        local reason = provider_error(response.body)
+        if reason then
+            return { ok = false, error = string.format(_("AI request failed (HTTP %d): %s"), code, reason) }
+        end
         return { ok = false, error = string.format(_("AI request failed (HTTP %d)"), code) }
     end
 

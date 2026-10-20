@@ -607,6 +607,40 @@ do
 end
 
 do
+    -- ".." inside a file name is not a path step: converters write stems
+    -- like "Ch 1..3", and such a pack must upload and delete normally.
+    local function upload_name(query) return server:upload_name({ raw_query = query }) end
+    check("upload accepts .. inside a name", upload_name("name=Ch%201..3.kindle-anki.zip") == "Ch 1..3.kindle-anki.zip")
+    check("upload accepts trailing dots", upload_name("name=Words...%20part%202.kindle-anki.zip")
+        == "Words... part 2.kindle-anki.zip")
+    for _, query in ipairs({ "name=..%2Fx.zip", "name=a%2F..%2Fb.zip", "name=..", "name=..%5Cx.zip" }) do
+        check("upload refuses " .. query, upload_name(query) == nil)
+    end
+
+    table.insert(packs_on_device,
+        { title = "Ch 1..3", cards = { 1 }, _path = upload_dir .. "/Ch 1..3.kindle-anki.json" })
+    local client = connect()
+    local request = "DELETE /api/packs?name=Ch%201..3.kindle-anki.json HTTP/1.1\r\nHost: kindle\r\n\r\n"
+    client:settimeout(5)
+    assert(client:send(request))
+    client:settimeout(0)
+    local head = drive(client)
+    check("delete of a name with .. inside is 200", head:find("200 OK", 1, true) ~= nil, head)
+    client:close()
+    reap()
+
+    client = connect()
+    request = "DELETE /api/packs?name=a%2F..%2Fx.json HTTP/1.1\r\nHost: kindle\r\n\r\n"
+    client:settimeout(5)
+    assert(client:send(request))
+    client:settimeout(0)
+    head = drive(client)
+    check("delete with a/../ is 400", head:find(" 400 ", 1, true) ~= nil)
+    client:close()
+    reap()
+end
+
+do
     -- A browser preconnect (TCP open, no data) must not starve real
     -- requests: the one-connection-at-a-time design stalled everything
     -- behind an idle connection until its timeout.

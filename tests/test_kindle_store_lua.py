@@ -59,6 +59,11 @@ class StoreLuaTests(unittest.TestCase):
                 archive.writestr("../escape.txt", "escaped")
             with zipfile.ZipFile(scratch / "backslash.zip", "w") as archive:
                 archive.writestr(zipfile.ZipInfo("..\\escape.txt"), "escaped")
+            with zipfile.ZipFile(scratch / "dots.zip", "w") as archive:
+                archive.writestr("Ch 1..3.kindle-anki.json", "{}")
+                archive.writestr("Ch 1..3.kindle-anki.media/a..b.png", b"png")
+            with zipfile.ZipFile(scratch / "inner-slip.zip", "w") as archive:
+                archive.writestr("a/../../escape.txt", "escaped")
             result = subprocess.run(
                 [LUA, str(ZIP_HARNESS), temp],
                 capture_output=True,

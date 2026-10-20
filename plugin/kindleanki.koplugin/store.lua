@@ -157,9 +157,16 @@ local MAX_UNPACKED_BYTES = 1024 * 1024 * 1024
 local MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 
 local function safe_zip_entry(name)
-    -- Zip-slip guard: no absolute paths, backslashes, or ".." anywhere.
-    return type(name) == "string" and name ~= "" and name:sub(1, 1) ~= "/"
-        and not name:find("\\", 1, true) and not name:find("%.%.")
+    -- Zip-slip guard: no absolute paths, backslashes, or ".." segments.
+    -- ".." inside a segment is an ordinary name ("Ch 1..3.kindle-anki.json").
+    if type(name) ~= "string" or name == "" or name:sub(1, 1) == "/"
+            or name:find("\\", 1, true) then
+        return false
+    end
+    for segment in name:gmatch("[^/]+") do
+        if segment == ".." then return false end
+    end
+    return true
 end
 
 local function shell_quote(value)
@@ -569,8 +576,12 @@ function Store:delete_pack(pack)
         return nil, "pack path is not JSON"
     end
     os.remove(path)
-    if type(pack.media_dir) == "string" and pack.media_dir ~= "" and not pack.media_dir:find("%.%.", 1, true) then
-        local media = dirname(path) .. "/" .. pack.media_dir
+    -- Same single-segment rule as validate_pack, so a media_dir can never
+    -- name the library folder or its parent.
+    local media_dir = pack.media_dir
+    if type(media_dir) == "string" and media_dir ~= "" and media_dir ~= "." and media_dir ~= ".."
+            and not media_dir:find("[/\\]") then
+        local media = dirname(path) .. "/" .. media_dir
         for _, root in ipairs(PACK_ROOTS) do
             if under_directory(media, root) then
                 remove_directory(media)

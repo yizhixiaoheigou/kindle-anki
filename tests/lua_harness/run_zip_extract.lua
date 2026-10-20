@@ -1,9 +1,9 @@
 #!/usr/bin/env lua
 -- Zip-slip and zip-bomb guards in store.lua, with KOReader modules stubbed.
 --   lua run_zip_extract.lua <scratch-dir>
--- The scratch dir holds good.zip, slip.zip, and backslash.zip, written by
--- tests/test_kindle_store_lua.py. Exits 0 and prints ALL OK when every
--- scenario passes.
+-- The scratch dir holds good.zip, slip.zip, backslash.zip, dots.zip, and
+-- inner-slip.zip, written by tests/test_kindle_store_lua.py. Exits 0 and
+-- prints ALL OK when every scenario passes.
 
 io.stdout:setvbuf("line")
 
@@ -104,6 +104,14 @@ check("unzip: refused zip wrote nothing", not exists(out .. "/inner/ok.txt"))
 out = fresh("out-backslash")
 check("unzip: backslash entry is refused", Store._extract_zip(scratch .. "/backslash.zip", out) == false)
 
+out = fresh("out-dots")
+check("unzip: names with .. inside extract", Store._extract_zip(scratch .. "/dots.zip", out) == true
+    and exists(out .. "/Ch 1..3.kindle-anki.json") and exists(out .. "/Ch 1..3.kindle-anki.media/a..b.png"))
+
+out = fresh("out-inner-slip")
+check("unzip: a/../ entry is refused", Store._extract_zip(scratch .. "/inner-slip.zip", out .. "/inner") == false)
+check("unzip: inner slip escaped nothing", not exists(out .. "/escape.txt"))
+
 out = fresh("out-missing")
 check("unzip: unreadable zip is refused", Store._extract_zip(scratch .. "/missing.zip", out) == false)
 
@@ -139,6 +147,14 @@ FAKE_ARCHIVES["fake-slip"] = {
     { path = "../escape.txt", mode = "file", size = 1 },
 }
 FAKE_ARCHIVES["fake-absolute"] = { { path = "/etc/passwd", mode = "file", size = 1 } }
+FAKE_ARCHIVES["fake-inner-slip"] = { { path = "a/../../b", mode = "file", size = 1 } }
+FAKE_ARCHIVES["fake-trailing-slip"] = { { path = "a/..", mode = "directory", size = 0 } }
+-- ".." inside a name is not a path step; converters write such stems.
+FAKE_ARCHIVES["fake-dots"] = {
+    { path = "Ch 1..3.kindle-anki.json", mode = "file", size = 100 },
+    { path = "Ch 1..3.kindle-anki.media/a..b.png", mode = "file", size = 100 },
+    { path = "Words... part 2.kindle-anki.json", mode = "file", size = 100 },
+}
 FAKE_ARCHIVES["fake-bomb"] = {
     { path = "a.bin", mode = "file", size = 700 * 1024 * 1024 },
     { path = "b.bin", mode = "file", size = 700 * 1024 * 1024 },
@@ -151,7 +167,12 @@ check("archiver: only regular files are written", #extracted == 2
     and extracted[1].dest == out .. "/demo.kindle-anki.json"
     and extracted[2].dest == out .. "/demo.kindle-anki.media/a.png")
 
-for _, name in ipairs({ "fake-slip", "fake-absolute", "fake-bomb" }) do
+out = fresh("out-dots")
+extracted = {}
+check("archiver: names with .. inside are extracted", Store._extract_zip("fake-dots", out) == true
+    and #extracted == 3 and extracted[2].dest == out .. "/Ch 1..3.kindle-anki.media/a..b.png")
+
+for _, name in ipairs({ "fake-slip", "fake-inner-slip", "fake-trailing-slip", "fake-absolute", "fake-bomb" }) do
     extracted = {}
     check("archiver: " .. name .. " is refused", Store._extract_zip(name, fresh("out-" .. name)) == false)
     check("archiver: " .. name .. " wrote nothing", #extracted == 0)

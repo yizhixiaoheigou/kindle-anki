@@ -649,7 +649,8 @@ function WebServer:handle_delete_pack(client, request)
     if name == "" then
         return self:send_json(client, 400, { ok = false, error = "missing pack name" })
     end
-    if name:find("[/\\]") or name:find("%.%.") or not name:lower():match("%.json$") then
+    -- One plain file name. ".." inside it is fine ("Ch 1..3.kindle-anki.json").
+    if name:find("[/\\]") or name == "." or name == ".." or not name:lower():match("%.json$") then
         return self:send_json(client, 400, { ok = false, error = "invalid pack name" })
     end
     if type(self.on_delete_pack) ~= "function" then
@@ -742,7 +743,8 @@ function WebServer:upload_name(request)
     if name == "" then
         return nil, { ok = false, error = "missing pack name" }
     end
-    if #name > 160 or name:find("[/\\]") or name:find("%.%.") then
+    -- The name only labels the result; still keep it one plain file name.
+    if #name > 160 or name:find("[/\\]") or name == "." or name == ".." then
         return nil, { ok = false, error = "invalid pack name" }
     end
     if name:lower():match("%.apkg$") then

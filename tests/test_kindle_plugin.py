@@ -93,6 +93,9 @@ class KindlePluginContractTests(unittest.TestCase):
         self.assertIn('fullscreen = false', main)
         self.assertNotIn('description = self:ai_transcript()', main)
         self.assertIn('saveSetting("keyboard_layout", "zh_CN")', main)
+        # Only while the plugin is in Chinese, and only for this dialog.
+        self.assertIn('I18N.get_locale() == "zh_CN"', main)
+        self.assertIn('G_reader_settings:saveSetting("keyboard_layout", previous_layout)', main)
 
     def test_card_images_sit_below_text_and_rating_choices_are_visible(self) -> None:
         main = self.read("main.lua")
@@ -123,7 +126,8 @@ class KindlePluginContractTests(unittest.TestCase):
             "if not textviewer_renders_html() then",
             "card_text_blocks",
             'card_images_button(card, "front_images")',
-            'card_images_button(card, "back_images")',
+            # An image-only question also offers its images on the answer.
+            'card_images_button(card, "back_images", tostring(card.front or "") == "")',
             'require("ui/widget/imageviewer")',
         ):
             self.assertIn(token, main)

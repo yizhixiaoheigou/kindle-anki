@@ -124,11 +124,17 @@ function KindleAnki:init()
     self:watch_dev_restart()
 end
 
--- KOReader broadcasts FlushSettings on suspend and exit. Progress is
--- batched in memory, so write it out then instead of losing it.
+-- KOReader broadcasts FlushSettings on suspend and exit, SaveSettings when
+-- the reader saves, Suspend before sleep, and CloseWidget when the reader or
+-- file browser holding this instance closes. Progress is batched in memory,
+-- so write it out on each instead of losing it. Return nothing, so the
+-- event still reaches the other modules.
 function KindleAnki:onFlushSettings()
     if self.store then self.store:flush_progress() end
 end
+KindleAnki.onSaveSettings = KindleAnki.onFlushSettings
+KindleAnki.onSuspend = KindleAnki.onFlushSettings
+KindleAnki.onCloseWidget = KindleAnki.onFlushSettings
 
 -- Developer devices only: when DEV_RESTART_MARKER exists, the deploy script
 -- (scripts/kindle-deploy.sh --restart) asks for a restart by creating
@@ -1132,6 +1138,12 @@ function KindleAnki:card_html(card, fields, prefix, include_back)
     local blocks = {}
     for _, block in ipairs(self:card_text_blocks(card, prefix, include_back)) do
         if block.role == "rule" then
+            -- A question that is only images keeps them above the line, so
+            -- the answer is not shown without its question.
+            if tostring(card.front or "") == "" and html_wants_field(fields, "front_images") then
+                local front_images = self:card_image_html(card, { "front_images" })
+                if front_images ~= "" then table.insert(blocks, front_images) end
+            end
             table.insert(blocks, '<div style="border-top:1px solid #888888;margin:0.4em 0 0.9em 0"></div>')
         else
             table.insert(blocks, string.format('<div style="%s">%s</div>',
@@ -1165,9 +1177,10 @@ end
 
 -- Old KOReader cannot place images inside the card text, so offer them
 -- in ImageViewer from a button. Returns nil when there is nothing to add.
-function KindleAnki:card_images_button(card, field)
+-- `with_front` adds the question's images first, for an image-only front.
+function KindleAnki:card_images_button(card, field, with_front)
     if textviewer_renders_html() then return nil end
-    local paths = self:card_image_paths(card, { field })
+    local paths = self:card_image_paths(card, with_front and { "front_images", field } or { field })
     if #paths == 0 then return nil end
     return {{
         text = string.format(_("View images (%d)"), #paths),
@@ -1278,6 +1291,10 @@ function KindleAnki:show_card()
         show_menu = false,
         buttons_table = buttons,
         text_type = "general",
+        -- The title-bar X and Back close the viewer without Exit deck.
+        -- UIManager:close (close_widget) does not call this, so it never
+        -- runs twice or loops back into exit_session.
+        close_callback = function() self:onFlushSettings() end,
     }
     UIManager:show(self.card_view)
 end
@@ -1286,7 +1303,9 @@ function KindleAnki:open_typing_dialog(card)
     local dialog
     dialog = InputDialog:new{
         title = _("Type your answer"),
-        description = card.front ~= "" and card.front or nil,
+        -- An image-only question has no text to repeat here; say so
+        -- instead of showing nothing above the input.
+        description = card.front ~= "" and card.front or _("This card's question is an image."),
         input = "",
         allow_newline = true,
         fullscreen = true,
@@ -1380,7 +1399,7 @@ function KindleAnki:show_answer(selected, typed)
             self:show_answer(selected, typed)
         end },
     }
-    local images_button = self:card_images_button(card, "back_images")
+    local images_button = self:card_images_button(card, "back_images", tostring(card.front or "") == "")
     if images_button then table.insert(tools, images_button[1]) end
     local ratings = {
         { text = rating_label("Again", "again"), callback = rate("again") },
@@ -1417,6 +1436,8 @@ function KindleAnki:show_answer(selected, typed)
         show_menu = false,
         buttons_table = buttons,
         text_type = "general",
+        -- Same as show_card: the title-bar X skips Exit deck.
+        close_callback = function() self:onFlushSettings() end,
     }
     UIManager:show(self.card_view)
 end
@@ -1635,10 +1656,14 @@ function KindleAnki:open_ai_input(card, revealed)
         })
         return
     end
-    -- KOReader ships a Simplified Chinese Pinyin IME. Prefer it for this
-    -- Chinese-first plugin; the keyboard's globe key still allows switching
-    -- to another enabled layout for an English question.
-    G_reader_settings:saveSetting("keyboard_layout", "zh_CN")
+    -- KOReader ships a Simplified Chinese Pinyin IME. Prefer it while the
+    -- plugin is in Chinese; the keyboard's globe key still allows switching
+    -- to another enabled layout for an English question. The keyboard reads
+    -- this setting when it is built, so the reader's own layout goes back
+    -- right after, instead of changing every other keyboard in KOReader.
+    local pinyin = I18N.get_locale() == "zh_CN"
+    local previous_layout = G_reader_settings:readSetting("keyboard_layout")
+    if pinyin then G_reader_settings:saveSetting("keyboard_layout", "zh_CN") end
     local dialog
     dialog = InputDialog:new{
         title = _("Ask AI about this card"),
@@ -1659,6 +1684,13 @@ function KindleAnki:open_ai_input(card, revealed)
     }
     UIManager:show(dialog)
     dialog:onShowKeyboard()
+    if pinyin then
+        if previous_layout == nil then
+            G_reader_settings:delSetting("keyboard_layout")
+        else
+            G_reader_settings:saveSetting("keyboard_layout", previous_layout)
+        end
+    end
 end
 
 function KindleAnki:send_ai(card, config, question, revealed)

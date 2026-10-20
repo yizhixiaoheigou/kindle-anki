@@ -151,6 +151,7 @@ local catalogs = {
         ["AI request failed without an HTTP response"] = "AI 请求失败：没有收到 HTTP 响应",
         ["AI request failed"] = "AI 请求失败",
         ["AI request failed (HTTP %d)"] = "AI 请求失败（HTTP %d）",
+        ["AI request failed (HTTP %d): %s"] = "AI 请求失败（HTTP %d）：%s",
         ["AI request was interrupted"] = "AI 请求已中断",
         ["AI returned invalid JSON"] = "AI 返回了无效的 JSON",
         ["AI returned no text"] = "AI 没有返回文本",
@@ -199,6 +200,7 @@ local catalogs = {
             "已删除 %d 段旧 AI 对话，大约还剩 %d KB。",
         ["I have the full card. Ask your question."] =
             "我已拿到完整卡片内容，请提出你的问题。",
+        ["This card's question is an image."] = "这张卡的题目是图片。",
     },
 }
 
@@ -210,6 +212,10 @@ function I18N.set_locale(requested)
     else
         locale = "zh_CN"
     end
+end
+
+function I18N.get_locale()
+    return locale
 end
 
 function I18N.t(source)
