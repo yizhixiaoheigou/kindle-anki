@@ -220,6 +220,10 @@
     var IMAGE_SHORTCODE = /\[ankiimage:([^\]]+)\]/gi;
     var EMBEDDED_OPTION = /^\s*([A-Z])\s*[\.．、:：]\s*(.+?)\s*$/gm;
     var ANSWER_LABELS = /^\s*([A-Z](?:\s*[,，、/]\s*[A-Z])*)\s*[\.．、:：]?\s*(?:\s|$)/;
+    // One cloze deletion with no nested "{{" or "}}" inside, so repeated
+    // passes resolve nested clozes from the innermost out.
+    var CLOZE = /\{\{c(\d+)::((?:(?!\{\{|\}\})[\s\S])*?)(?:::((?:(?!\{\{|\}\})[\s\S])*?))?\}\}/g;
+    var IMAGE_OCCLUSION = "image-occlusion:";
 
     function cardText(value) {
         if (UNSUPPORTED_MARKUP.test(value)) {
@@ -323,6 +327,103 @@
         return parts.join("");
     }
 
+    function isClozeModel(model) {
+        return model.type === 1;
+    }
+
+    // Fields the cloze template reads ({{cloze:Text}}), in field order.
+    function clozeFieldIndexes(model, indexes) {
+        var found = {};
+        var templates = Array.isArray(model.tmpls) ? model.tmpls : [];
+        templates.forEach(function (template) {
+            if (template === null || typeof template !== "object" || Array.isArray(template)) {
+                return;
+            }
+            var pattern = /\{\{cloze:([^}]+)\}\}/gi;
+            var qfmt = String(template.qfmt || "");
+            var match;
+            while ((match = pattern.exec(qfmt)) !== null) {
+                var key = nameKey(match[1].split(":").pop());
+                if (key in indexes) {
+                    found[indexes[key]] = true;
+                }
+            }
+        });
+        var result = Object.keys(found).map(Number).sort(function (a, b) { return a - b; });
+        if (result.length) {
+            return result;
+        }
+        var textIndex = findIndex(indexes, ["text", "文字", "正文"]);
+        if (textIndex !== null) {
+            return [textIndex];
+        }
+        return Object.keys(indexes).length ? [0] : [];
+    }
+
+    // Render cloze `number` hidden (front) or revealed (back). Other cloze
+    // numbers show their text. Returns [html, raw answers of the active cloze].
+    function renderCloze(value, number, reveal) {
+        var answers = [];
+        function replace(whole, clozeNumber, answer, hint) {
+            if (parseInt(clozeNumber, 10) !== number) {
+                return answer;
+            }
+            answers.push(answer);
+            if (reveal) {
+                return "[" + answer + "]";
+            }
+            return hint ? "[" + hint + "]" : "[...]";
+        }
+        var previous = null;
+        while (previous !== value) {
+            previous = value;
+            value = value.replace(CLOZE, replace);
+        }
+        return [value, answers];
+    }
+
+    // Raw/clean front and back for one cloze card, or a skip reason string.
+    function clozeCard(fields, model, number) {
+        var rawFrontParts = [];
+        var rawBackParts = [];
+        var answers = [];
+        model.frontIndexes.forEach(function (index) {
+            var hidden = renderCloze(field(fields, index), number, false);
+            var revealed = renderCloze(field(fields, index), number, true);
+            rawFrontParts.push(hidden[0]);
+            rawBackParts.push(revealed[0]);
+            answers = answers.concat(hidden[1]);
+        });
+        if (!answers.length) {
+            return "empty_front";
+        }
+        if (answers.some(function (answer) {
+            return decodeEntities(answer).trim().indexOf(IMAGE_OCCLUSION) === 0;
+        })) {
+            return "image_occlusion";
+        }
+        var front = rawFrontParts.map(clean).filter(Boolean).join("\n");
+        var backParts = rawBackParts.map(clean).filter(Boolean);
+        var extra = joinedText(fields, model.backIndexes);
+        if (extra) {
+            backParts.push(extra);
+        }
+        var expected = [];
+        answers.forEach(function (answer) {
+            var text = clean(answer);
+            if (text && expected.indexOf(text) < 0) {
+                expected.push(text);
+            }
+        });
+        return {
+            rawFront: rawFrontParts.join(""),
+            rawBack: rawBackParts.join("") + joinedRaw(fields, model.backIndexes),
+            front: front,
+            back: backParts.join("\n"),
+            expected: expected,
+        };
+    }
+
     function parseTags(rawTags) {
         return String(rawTags == null ? "" : rawTags).split(/\s+/).filter(Boolean);
     }
@@ -413,7 +514,19 @@
             });
             var detected = null;
             var reason = null;
-            if (optionIndexes.length > 64) {
+            if (isClozeModel(model)) {
+                var clozeIndexes = clozeFieldIndexes(model, indexes);
+                var extraIndex = findIndex(indexes, ["back extra", "extra", "背面额外"]);
+                detected = {
+                    modelId: modelId, name: name, kind: "cloze",
+                    optionIndexes: [], packedOptionsIndex: null,
+                    correctIndex: null, explanationIndex: null,
+                    forcedMultiple: false,
+                    frontIndexes: clozeIndexes,
+                    backIndexes: extraIndex !== null && clozeIndexes.indexOf(extraIndex) < 0
+                        ? [extraIndex] : [],
+                };
+            } else if (optionIndexes.length > 64) {
                 reason = name + ": too_many_options";
             } else if (optionIndexes.length >= 2 && questionIndex !== null && correctIndex !== null) {
                 detected = {
@@ -457,7 +570,15 @@
                 var mappedFront = parseMappingIndexes(spec.front, names.length, name + " front");
                 var mappedBack = parseMappingIndexes(spec.back, names.length, name + " back");
                 if (mappedFront.length) {
-                    if (detected && detected.kind === "choice") {
+                    if (detected && detected.kind === "cloze") {
+                        detected = {
+                            modelId: modelId, name: name, kind: "cloze",
+                            optionIndexes: [], packedOptionsIndex: null,
+                            correctIndex: null, explanationIndex: null,
+                            forcedMultiple: false,
+                            frontIndexes: mappedFront, backIndexes: mappedBack,
+                        };
+                    } else if (detected && detected.kind === "choice") {
                         detected = {
                             modelId: modelId, name: name, kind: "choice",
                             questionIndex: mappedFront[0],
@@ -997,7 +1118,9 @@
                     bump("unsupported_model");
                     continue;
                 }
-                if ((row.cardOrd || 0) !== 0) {
+                // A cloze note's card ord is its cloze number minus one, not
+                // a second template.
+                if (model.kind !== "cloze" && (row.cardOrd || 0) !== 0) {
                     bump("non_primary_template");
                     continue;
                 }
@@ -1009,7 +1132,28 @@
                 var fields = String(row.fields == null ? "" : row.fields).split("\x1f");
                 var cardHasMedia = false;
                 var frontImages, backImages, front, back, cardFields;
-                if (model.kind === "choice") {
+                if (model.kind === "cloze") {
+                    var rendered = clozeCard(fields, model, (row.cardOrd || 0) + 1);
+                    if (typeof rendered === "string") {
+                        bump(rendered);
+                        continue;
+                    }
+                    cardHasMedia = hasMedia(rendered.rawFront) || hasMedia(rendered.rawBack);
+                    frontImages = imageRefs(rendered.rawFront, mediaCatalog);
+                    backImages = imageRefs(rendered.rawBack, mediaCatalog);
+                    if (!rendered.front && !frontImages.length) {
+                        bump("empty_front");
+                        continue;
+                    }
+                    if (!rendered.back && !backImages.length) {
+                        bump("empty_back");
+                        continue;
+                    }
+                    cardFields = { type: "short_answer", front: rendered.front, back: rendered.back };
+                    if (rendered.expected.length === 1) {
+                        cardFields.expected_answers = rendered.expected;
+                    }
+                } else if (model.kind === "choice") {
                     var rawQuestion = joinedRaw(fields, model.frontIndexes);
                     var rawBack = joinedRaw(fields, model.backIndexes);
                     cardHasMedia = hasMedia(rawQuestion) || hasMedia(rawBack);
@@ -1044,7 +1188,7 @@
                         }
                     }
                     back = backParts.join("\n");
-                    if (!front) {
+                    if (!front && !frontImages.length) {
                         bump("empty_front");
                         continue;
                     }
@@ -1072,11 +1216,12 @@
                     backImages = imageRefs(rawBack, mediaCatalog);
                     front = joinedText(fields, model.frontIndexes);
                     back = joinedText(fields, model.backIndexes);
-                    if (!front) {
+                    // A side may be only images; it still needs one or the other.
+                    if (!front && !frontImages.length) {
                         bump("empty_front");
                         continue;
                     }
-                    if (!back) {
+                    if (!back && !backImages.length) {
                         bump("empty_back");
                         continue;
                     }
@@ -1137,9 +1282,22 @@
                 deckCards.get(deviceDeckId).push(cardId);
             }
 
+            var skippedKeys = Object.keys(skipped).sort();
+            var skippedReasons = {};
+            skippedKeys.forEach(function (key) { skippedReasons[key] = skipped[key]; });
             if (!cards.length) {
-                throw AnkiError(
-                    "no importable cards in this .apkg (all notes were skipped or unsupported)");
+                var detail = skippedKeys.map(function (key) {
+                    return key + "=" + skipped[key];
+                }).join(", ");
+                var error = AnkiError(
+                    "no importable cards in this .apkg (all notes were skipped or unsupported)" +
+                    (detail ? ": " + detail : ""));
+                error.report = {
+                    total_cards: rows.length,
+                    skipped_reasons: skippedReasons,
+                    unsupported_models: unsupported.slice().sort(),
+                };
+                throw error;
             }
             var orderedDecks = Array.from(deckNames.keys()).sort(function (a, b) {
                 var nameA = deckNames.get(a);
@@ -1151,9 +1309,6 @@
             var packTitle = (title || "").trim()
                 || primaryDeckTitle(deckNames, deckCards)
                 || archive.fileName.replace(/\.[^.]*$/, "");
-            var skippedKeys = Object.keys(skipped).sort();
-            var skippedReasons = {};
-            skippedKeys.forEach(function (key) { skippedReasons[key] = skipped[key]; });
             return {
                 format: FORMAT_NAME,
                 version: FORMAT_VERSION,
@@ -1357,18 +1512,22 @@
             if (cardType !== "short_answer" && cardType !== "choice") {
                 throw PackageError("card " + cardId + " type must be one of choice, short_answer");
             }
+            var images = {};
+            ["front_images", "back_images"].forEach(function (field) {
+                images[field] = mediaRefs(rawCard[field], "card " + cardId + " " + field);
+            });
+            // A side's text may be empty only when that side has images.
             var card = {
                 id: cardId,
                 deck_id: deckId,
                 type: cardType,
-                front: text(rawCard.front, "card " + cardId + " front", true),
-                back: text(rawCard.back, "card " + cardId + " back", true),
+                front: text(rawCard.front, "card " + cardId + " front", !images.front_images.length),
+                back: text(rawCard.back, "card " + cardId + " back", !images.back_images.length),
                 tags: (rawCard.tags || []).map(function (tag) { return String(tag); }),
             };
             ["front_images", "back_images"].forEach(function (field) {
-                var refs = mediaRefs(rawCard[field], "card " + cardId + " " + field);
-                if (refs.length) {
-                    card[field] = refs;
+                if (images[field].length) {
+                    card[field] = images[field];
                 }
             });
             if (cardType === "short_answer") {

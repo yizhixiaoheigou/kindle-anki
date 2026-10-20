@@ -77,6 +77,14 @@ The converter never uploads your deck. It does not write API keys into the pack.
    and one back field. **只转换，下载 .zip** gives you the same pack as a file
    instead.
 
+What converts: Basic-style notes become short-answer cards, notes with
+option fields become choice cards, and Cloze notes become one card per cloze
+number (the hidden part shows as `[...]`, or `[hint]`, and the back shows
+it as `[answer]`). A side may be just an image. Audio is dropped, so a back
+that is only audio is skipped, and Anki's image occlusion notes are not
+supported. If nothing in the file can be converted, the page lists why each
+card was skipped and what to change.
+
 The **卡包** (Packs) tab lists what is already on the Kindle. **删除**
 (Delete) asks once more, then removes the pack together with its study
 progress and AI chats — the same as the plugin's own Manage packs. The

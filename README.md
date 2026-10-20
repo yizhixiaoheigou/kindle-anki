@@ -6,8 +6,8 @@
 
 # Kindle Anki
 
-Kindle Anki is a KOReader plugin that studies Anki `.apkg` decks (short-answer
-and choice, with images) on a jailbroken Kindle. Scan a QR code on the Kindle
+Kindle Anki is a KOReader plugin that studies Anki `.apkg` decks (short-answer,
+choice, and cloze, with images) on a jailbroken Kindle. Scan a QR code on the Kindle
 with your phone, pick the `.apkg` in the page that opens, and the converted
 pack lands on the Kindle. Progress stays on the Kindle.
 
@@ -43,7 +43,7 @@ The optional computer converter:
 ## Who this is for
 
 - A jailbroken Kindle running [KOReader](https://github.com/koreader/koreader), the open-source reading system for Kindle.
-- Anki decks you already have as `.apkg` — export them from desktop [Anki](https://apps.ankiweb.net/) (choice cards and images included).
+- Anki decks you already have as `.apkg` — export them from desktop [Anki](https://apps.ankiweb.net/) (choice, cloze, and image cards included).
 
 This tool does not include or provide any jailbreaking methods; jailbreaking
 is your own decision and your own risk.
@@ -130,7 +130,7 @@ Plain `http://` endpoints send the key unencrypted — prefer `https://`.
 
 ## Versus KAnki / anki.koplugin
 
-This tool **converts existing `.apkg`** decks (choice + images) in a phone or
+This tool **converts existing `.apkg`** decks (choice, cloze, images) in a phone or
 computer browser, or with a desktop converter, and reviews them in KOReader
 with its own scheduler.
 

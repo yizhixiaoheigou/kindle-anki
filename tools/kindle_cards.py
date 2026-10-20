@@ -164,16 +164,24 @@ def validate_package(package: dict[str, Any]) -> dict[str, Any]:
             raise KindlePackageError(
                 f"card {card_id} type must be one of {', '.join(sorted(CARD_TYPES))}"
             )
+        images = {
+            field: _media_refs(raw_card.get(field), f"card {card_id} {field}")
+            for field in ("front_images", "back_images")
+        }
+        # A side's text may be empty only when that side has images.
         card: dict[str, Any] = {
             "id": card_id,
             "deck_id": deck_id,
             "type": card_type,
-            "front": _text(raw_card.get("front"), f"card {card_id} front"),
-            "back": _text(raw_card.get("back"), f"card {card_id} back"),
+            "front": _text(
+                raw_card.get("front"), f"card {card_id} front", required=not images["front_images"]
+            ),
+            "back": _text(
+                raw_card.get("back"), f"card {card_id} back", required=not images["back_images"]
+            ),
             "tags": [str(tag) for tag in raw_card.get("tags", [])],
         }
-        for field in ("front_images", "back_images"):
-            refs = _media_refs(raw_card.get(field), f"card {card_id} {field}")
+        for field, refs in images.items():
             if refs:
                 card[field] = refs
         if card_type == "short_answer":

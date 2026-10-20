@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 import unittest
@@ -13,12 +14,15 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from kindle_import_ui import (  # noqa: E402
     COPY,
+    SKIP_HINTS,
+    SKIP_REASONS,
     choose_family,
     field_name_text,
     field_sample_text,
     initial_pack_name,
     kind_label,
     mapping_fronts_complete,
+    no_cards_text,
     share_keep_line,
     wheel_steps,
 )
@@ -57,10 +61,28 @@ class KindleImportUiTests(unittest.TestCase):
     def test_kind_label_and_fronts(self) -> None:
         self.assertEqual(kind_label("choice"), COPY["kind_choice"])
         self.assertEqual(kind_label("mystery"), COPY["kind_unknown"])
+        self.assertEqual(kind_label("cloze"), COPY["kind_cloze"])
         self.assertFalse(mapping_fronts_complete({}))
         self.assertFalse(mapping_fronts_complete({"1": {"front": [], "back": [1]}}))
         self.assertFalse(mapping_fronts_complete({"1": {"front": [0], "back": []}, "2": {"front": [], "back": [1]}}))
         self.assertTrue(mapping_fronts_complete({"1": {"front": [0], "back": []}, "2": {"front": [1], "back": [2]}}))
+
+    def test_no_cards_text_names_reasons_and_the_main_fix(self) -> None:
+        text = no_cards_text({"total_cards": 5, "skipped_reasons": {"empty_back": 4, "empty_front": 1}})
+        self.assertIn("5 张全部跳过", text)
+        self.assertIn("背面为空 4，正面为空 1", text)
+        self.assertTrue(text.endswith(SKIP_HINTS["empty_back"]))
+        self.assertIn("0 张全部跳过", no_cards_text({}))
+
+    def test_skip_copy_matches_the_browser_page(self) -> None:
+        app_js = (ROOT / "plugin" / "kindleanki.koplugin" / "web" / "app.js").read_text(encoding="utf-8")
+
+        def table(name: str) -> dict:
+            body = re.search(name + r"\s*=\s*\{(.*?)\};", app_js, re.S).group(1)
+            return dict(re.findall(r'(\w+):\s*"([^"]*)"', body))
+
+        self.assertEqual(table("var SKIP_HINTS"), SKIP_HINTS)
+        self.assertEqual(table("var names"), SKIP_REASONS)
 
     def test_share_keep_line_and_wheel(self) -> None:
         self.assertEqual(share_keep_line(8766), COPY["share_keep_line"].format(port=8766))

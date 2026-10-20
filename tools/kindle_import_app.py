@@ -21,6 +21,7 @@ from kindle_import_ui import (
     initial_pack_name,
     kind_label,
     mapping_fronts_complete,
+    no_cards_text,
     share_keep_line,
     wheel_steps,
 )
@@ -39,6 +40,7 @@ ROOT = repo_root()
 sys.path.insert(0, str(ROOT / "tools"))
 
 from kindle_anki_importer import import_apkg, inspect_apkg  # noqa: E402
+from kindle_apkg import NoImportableCardsError  # noqa: E402
 from kindle_bundle import write_kindle_bundle  # noqa: E402
 from kindle_pack_server import (  # noqa: E402
     PACK_PORT,
@@ -178,7 +180,7 @@ class ConverterApp(tk.Tk):
         self.status = tk.StringVar(value=COPY["status_idle"])
         ttk.Label(left, textvariable=self.status, wraplength=400).pack(anchor="w", pady=(8, 0))
         self.wrote_var = tk.StringVar(value="")
-        ttk.Label(left, textvariable=self.wrote_var, style="Mute.TLabel").pack(anchor="w")
+        ttk.Label(left, textvariable=self.wrote_var, style="Mute.TLabel", wraplength=400).pack(anchor="w")
 
         self.share_tick = tk.Frame(right, width=8, height=8, bg=COLORS["ink"], highlightthickness=0, bd=0)
         self.share_headline = ttk.Label(right, text="")
@@ -513,7 +515,10 @@ class ConverterApp(tk.Tk):
         self._set_busy(False)
         self._last_traceback = tb
         self._set_status(COPY["convert_fail"])
-        self.wrote_var.set(str(exc))
+        if isinstance(exc, NoImportableCardsError):
+            self.wrote_var.set(no_cards_text(exc.report))
+        else:
+            self.wrote_var.set(str(exc))
         if not self.copy_error_btn.winfo_ismapped():
             self.copy_error_btn.pack(side="left", padx=(8, 0), after=self.convert_btn)
 

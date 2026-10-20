@@ -7,6 +7,7 @@
  * Usage:
  *   node run_converter.js <apkg> <out-pkg.json> [out-zip]
  *   node run_converter.js --inspect <apkg> <out-inspect.json>
+ *   node run_converter.js --expect-error <apkg> <out-error.json>
  */
 "use strict";
 
@@ -28,6 +29,8 @@ async function main() {
         const flag = args.shift();
         if (flag === "--inspect") {
             options.inspect = true;
+        } else if (flag === "--expect-error") {
+            options.expectError = true;
         } else if (flag === "--no-ai") {
             options.noAi = true;
         } else if (flag === "--title") {
@@ -61,11 +64,20 @@ async function main() {
     }
 
     const archive = convert.openArchive(fileBytes, fileName);
-    const pack = await convert.importApkg(fileBytes, fileName, {
-        ai: ai,
-        fieldMapping: options.mapping || null,
-        title: options.title || null,
-    });
+    let pack;
+    try {
+        pack = await convert.importApkg(fileBytes, fileName, {
+            ai: ai,
+            fieldMapping: options.mapping || null,
+            title: options.title || null,
+        });
+    } catch (error) {
+        if (!options.expectError) throw error;
+        fs.writeFileSync(outPath, JSON.stringify({ message: error.message, report: error.report || null }));
+        process.stdout.write("ok\n");
+        return;
+    }
+    if (options.expectError) fail("expected the import to fail");
     fs.writeFileSync(outPath, JSON.stringify(pack));
     if (outZipPath) {
         const bundle = await convert.writeKindleBundle(pack, archive, { fileName: fileName });

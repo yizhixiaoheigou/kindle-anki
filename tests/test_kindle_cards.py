@@ -16,8 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from kindle_anki_importer import AnkiImportError, extract_media, import_apkg, inspect_apkg  # noqa: E402
+from kindle_apkg import NoImportableCardsError  # noqa: E402
 from kindle_bundle import safe_stem, write_kindle_bundle  # noqa: E402
-from kindle_cards import load_package, save_package, validate_package  # noqa: E402
+from kindle_cards import KindlePackageError, load_package, save_package, validate_package  # noqa: E402
 
 
 def _model(model_id: int, name: str, fields: list[str]) -> dict:
@@ -73,6 +74,74 @@ def _make_apkg(path: Path) -> None:
             archive.write(db_path, "collection.anki2")
             archive.writestr("media", json.dumps({"0": "question.jpg"}))
             archive.writestr("0", b"test-image")
+
+
+def _cloze_model(model_id: int, name: str, fields: list[str], qfmt: str) -> dict:
+    model = _model(model_id, name, fields)
+    model["type"] = 1
+    model["tmpls"] = [{"name": "Cloze", "ord": 0, "qfmt": qfmt, "afmt": qfmt + "<br>{{Back Extra}}"}]
+    return model
+
+
+def _write_collection(path: Path, models: dict, notes: list[tuple], cards: list[tuple],
+                      media: dict[str, bytes] | None = None) -> None:
+    """cards are (id, note_id, ord); everything sits in one deck."""
+
+    deck_id = 1_700_000_000_005
+    with tempfile.TemporaryDirectory(prefix="kindle-anki-fixture-") as temp:
+        db_path = Path(temp) / "collection.anki2"
+        connection = sqlite3.connect(db_path)
+        connection.executescript(
+            """
+            CREATE TABLE col (id INTEGER PRIMARY KEY, models TEXT NOT NULL, decks TEXT NOT NULL);
+            CREATE TABLE notes (id INTEGER PRIMARY KEY, mid INTEGER NOT NULL, tags TEXT, flds TEXT);
+            CREATE TABLE cards (id INTEGER PRIMARY KEY, nid INTEGER NOT NULL, did INTEGER NOT NULL, ord INTEGER NOT NULL);
+            """
+        )
+        connection.execute(
+            "INSERT INTO col (id, models, decks) VALUES (1, ?, ?)",
+            (json.dumps(models), json.dumps({str(deck_id): {"id": deck_id, "name": "Shapes"}})),
+        )
+        connection.executemany("INSERT INTO notes (id, mid, tags, flds) VALUES (?, ?, '', ?)", notes)
+        connection.executemany(
+            "INSERT INTO cards (id, nid, did, ord) VALUES (?, ?, ?, ?)",
+            [(card_id, note_id, deck_id, ord_) for card_id, note_id, ord_ in cards],
+        )
+        connection.commit()
+        connection.close()
+        names = sorted(media or {})
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.write(db_path, "collection.anki2")
+            archive.writestr("media", json.dumps({str(index): name for index, name in enumerate(names)}))
+            for index, name in enumerate(names):
+                archive.writestr(str(index), (media or {})[name])
+
+
+def _make_shapes_apkg(path: Path) -> None:
+    """Cloze (with an empty Back Extra), nested cloze, image-only sides,
+    an audio-only back, and an image occlusion note."""
+
+    models = {
+        "1": _cloze_model(1, "Cloze", ["Text", "Back Extra"], "{{cloze:Text}}"),
+        "2": _model(2, "Basic", ["Front", "Back"]),
+        "3": _cloze_model(
+            3, "Image Occlusion", ["Occlusion", "Image", "Header", "Back Extra", "Comments"],
+            "{{#Header}}<div>{{Header}}</div>{{/Header}}{{cloze:Occlusion}}<div>{{Image}}</div>",
+        ),
+    }
+    notes = [
+        (100, 1, "The {{c1::sun::star}} rises in the {{c2::<b>east</b>}}\x1f"),
+        (101, 1, "{{c1::Paris is in {{c2::France}}}}\x1fGeography"),
+        (102, 2, '<img src="q.png">\x1fa cat'),
+        (103, 2, 'What is this?\x1f<img src="a.png">'),
+        (104, 2, "word\x1f[sound:w.mp3]"),
+        (105, 3, "{{c1::image-occlusion:rect:left=.1:top=.2:width=.3:height=.4}}"
+                 '\x1f<img src="io.png">\x1f\x1f\x1f'),
+    ]
+    cards = [(200, 100, 0), (201, 100, 1), (202, 101, 0), (203, 101, 1),
+             (204, 102, 0), (205, 103, 0), (206, 104, 0), (207, 105, 0)]
+    media = {"q.png": b"q-image", "a.png": b"a-image", "io.png": b"io-image", "w.mp3": b"audio"}
+    _write_collection(path, models, notes, cards, media)
 
 
 class KindlePackTests(unittest.TestCase):
@@ -268,6 +337,98 @@ class KindlePackTests(unittest.TestCase):
             with self.assertRaises(AnkiImportError) as ctx:
                 import_apkg(apkg)
             self.assertIn("no importable cards", str(ctx.exception))
+            self.assertIn("unsupported_model=1", str(ctx.exception))
+            self.assertIsInstance(ctx.exception, NoImportableCardsError)
+            self.assertEqual(ctx.exception.report["skipped_reasons"], {"unsupported_model": 1})
+            self.assertEqual(ctx.exception.report["total_cards"], 1)
+
+    def test_cloze_notes_become_one_card_per_cloze(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-cloze-") as temp:
+            apkg = Path(temp) / "shapes.apkg"
+            _make_shapes_apkg(apkg)
+            package = import_apkg(apkg)
+        by_source = {card["source_card_id"]: card for card in package["cards"]}
+        first = by_source[200]
+        self.assertEqual(first["type"], "short_answer")
+        self.assertEqual(first["front"], "The [star] rises in the east")
+        self.assertEqual(first["back"], "The [sun] rises in the east")
+        self.assertEqual(first["expected_answers"], ["sun"])
+        second = by_source[201]
+        self.assertEqual(second["front"], "The sun rises in the [...]")
+        self.assertEqual(second["back"], "The sun rises in the [east]")
+        self.assertEqual(second["expected_answers"], ["east"])
+        # Nested clozes resolve from the inside out.
+        self.assertEqual(by_source[202]["front"], "[...]")
+        self.assertEqual(by_source[202]["back"], "[Paris is in France]\nGeography")
+        self.assertEqual(by_source[203]["front"], "Paris is in [...]")
+        self.assertEqual(by_source[203]["back"], "Paris is in [France]\nGeography")
+
+    def test_image_only_sides_import_and_audio_only_back_skips(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-image-only-") as temp:
+            apkg = Path(temp) / "shapes.apkg"
+            _make_shapes_apkg(apkg)
+            package = import_apkg(apkg)
+            result = write_kindle_bundle(package, apkg, Path(temp) / "out")
+            loaded = load_package(result["json"])
+        by_source = {card["source_card_id"]: card for card in loaded["cards"]}
+        self.assertEqual(by_source[204]["front"], "")
+        self.assertEqual(by_source[204]["front_images"][0]["name"], "q.png")
+        self.assertEqual(by_source[204]["back"], "a cat")
+        self.assertEqual(by_source[205]["back"], "")
+        self.assertEqual(by_source[205]["back_images"][0]["name"], "a.png")
+        self.assertNotIn(206, by_source)
+        self.assertNotIn(207, by_source)
+        self.assertEqual(package["report"]["imported_cards"], 6)
+        self.assertEqual(
+            package["report"]["skipped_reasons"], {"empty_back": 1, "image_occlusion": 1}
+        )
+
+    def test_empty_text_needs_an_image_on_that_side(self) -> None:
+        package = self._package()
+        package["cards"][0]["front"] = ""
+        with self.assertRaises(KindlePackageError):
+            validate_package(package)
+        package["cards"][0]["front_images"] = ["q.png"]
+        self.assertEqual(validate_package(package)["cards"][0]["front"], "")
+        package["cards"][0]["back"] = ""
+        with self.assertRaises(KindlePackageError):
+            validate_package(package)
+
+    def test_inspect_reports_cloze_kind_and_fields(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-cloze-inspect-") as temp:
+            apkg = Path(temp) / "shapes.apkg"
+            _make_shapes_apkg(apkg)
+            info = inspect_apkg(apkg)
+        cloze = next(model for model in info["models"] if model["name"] == "Cloze")
+        self.assertEqual(cloze["kind"], "cloze")
+        self.assertEqual(cloze["suggested_front"], [0])
+        self.assertEqual(cloze["suggested_back"], [1])
+        occlusion = next(model for model in info["models"] if model["name"] == "Image Occlusion")
+        self.assertEqual(occlusion["suggested_front"], [0])
+        self.assertEqual(occlusion["suggested_back"], [3])
+
+    def test_cloze_mapping_keeps_cloze_rendering(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-cloze-map-") as temp:
+            apkg = Path(temp) / "shapes.apkg"
+            _make_shapes_apkg(apkg)
+            package = import_apkg(apkg, field_mapping={"1": {"front": [0], "back": []}})
+        card = next(card for card in package["cards"] if card["source_card_id"] == 202)
+        self.assertEqual(card["front"], "[...]")
+        self.assertEqual(card["back"], "[Paris is in France]")
+
+    def test_all_image_occlusion_reports_why(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-io-") as temp:
+            apkg = Path(temp) / "io.apkg"
+            models = {"3": _cloze_model(3, "Image Occlusion", ["Occlusion", "Image"], "{{cloze:Occlusion}}")}
+            _write_collection(
+                apkg, models,
+                [(100, 3, "{{c1::image-occlusion:rect:left=.1}}\x1f<img src=\"io.png\">")],
+                [(200, 100, 0)],
+            )
+            with self.assertRaises(NoImportableCardsError) as ctx:
+                import_apkg(apkg)
+        self.assertEqual(ctx.exception.report["skipped_reasons"], {"image_occlusion": 1})
+        self.assertIn("image_occlusion=1", str(ctx.exception))
 
     def test_inspect_suggests_deck_title(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-title-") as temp:

@@ -4,8 +4,9 @@
 This importer intentionally handles the two first Kindle card families:
 Basic-style front/back notes become short-answer cards, while note types with
 named option fields become single- or multiple-choice cards. Basic notes whose
-text contains labelled options are also promoted to choice cards. Referenced
-images are copied as separate Kindle files and loaded on demand.
+text contains labelled options are also promoted to choice cards. Cloze notes
+become one short-answer card per cloze number. Referenced images are copied
+as separate Kindle files and loaded on demand.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from typing import Any, Iterable
 from kindle_apkg import (
     AnkiImportError,
     MAX_ZIP_ENTRY_BYTES,
+    NoImportableCardsError,
     _card_text,
     _deck_name,
     _extract_field,
@@ -67,6 +69,14 @@ _ANSWER_LABELS = re.compile(
     r"^\s*([A-Z](?:\s*[,，、/]\s*[A-Z])*)\s*[\.．、:：]?\s*(?:\s|$)",
     re.IGNORECASE,
 )
+# One cloze deletion with no nested "{{" or "}}" inside, so repeated passes
+# resolve nested clozes from the innermost out.
+_CLOZE = re.compile(
+    r"\{\{c(\d+)::((?:(?!\{\{|\}\}).)*?)(?:::((?:(?!\{\{|\}\}).)*?))?\}\}",
+    re.DOTALL,
+)
+_CLOZE_TEMPLATE_FIELD = re.compile(r"\{\{cloze:([^}]+)\}\}", re.IGNORECASE)
+_IMAGE_OCCLUSION = "image-occlusion:"
 
 
 def _key(value: str) -> str:
@@ -117,6 +127,87 @@ def _joined_text(fields: list[str], indexes: tuple[int, ...]) -> str:
 
 def _joined_raw(fields: list[str], indexes: tuple[int, ...]) -> str:
     return "".join(_field(fields, index) for index in indexes)
+
+
+def _is_cloze_model(model: dict[str, Any]) -> bool:
+    kind = model.get("type")
+    return isinstance(kind, int) and not isinstance(kind, bool) and kind == 1
+
+
+def _cloze_field_indexes(model: dict[str, Any], indexes: dict[str, int]) -> tuple[int, ...]:
+    """Fields the cloze template reads ({{cloze:Text}}), in field order."""
+
+    found: set[int] = set()
+    templates = model.get("tmpls")
+    for template in templates if isinstance(templates, list) else []:
+        if not isinstance(template, dict):
+            continue
+        for match in _CLOZE_TEMPLATE_FIELD.finditer(str(template.get("qfmt") or "")):
+            field_name = match.group(1).split(":")[-1]
+            index = indexes.get(_key(field_name))
+            if index is not None:
+                found.add(index)
+    if found:
+        return tuple(sorted(found))
+    text_index = _find_index(indexes, ("text", "文字", "正文"))
+    if text_index is not None:
+        return (text_index,)
+    return (0,) if indexes else ()
+
+
+def _render_cloze(value: str, number: int, reveal: bool) -> tuple[str, list[str]]:
+    """Render cloze ``number`` hidden (front) or revealed (back).
+
+    Other cloze numbers show their text. Returns the rendered HTML and the
+    raw answers of the active cloze.
+    """
+
+    answers: list[str] = []
+
+    def replace(match: re.Match[str]) -> str:
+        answer = match.group(2)
+        if int(match.group(1)) != number:
+            return answer
+        answers.append(answer)
+        if reveal:
+            return "[" + answer + "]"
+        hint = match.group(3)
+        return "[" + hint + "]" if hint else "[...]"
+
+    previous = None
+    while previous != value:
+        previous = value
+        value = _CLOZE.sub(replace, value)
+    return value, answers
+
+
+def _cloze_card(
+    fields: list[str], model: KindleModel, number: int
+) -> tuple[str, str, str, str, list[str]] | str:
+    """Raw/clean front and back for one cloze card, or a skip reason."""
+
+    raw_front_parts: list[str] = []
+    raw_back_parts: list[str] = []
+    answers: list[str] = []
+    for index in model.front_indexes:
+        hidden, found = _render_cloze(_field(fields, index), number, reveal=False)
+        revealed, _ = _render_cloze(_field(fields, index), number, reveal=True)
+        raw_front_parts.append(hidden)
+        raw_back_parts.append(revealed)
+        answers.extend(found)
+    if not answers:
+        return "empty_front"
+    if any(html.unescape(answer).strip().startswith(_IMAGE_OCCLUSION) for answer in answers):
+        return "image_occlusion"
+    front = "\n".join(part for part in (_clean(raw) for raw in raw_front_parts) if part)
+    back_parts = [part for part in (_clean(raw) for raw in raw_back_parts) if part]
+    extra = _joined_text(fields, model.back_indexes)
+    if extra:
+        back_parts.append(extra)
+    raw_front = "".join(raw_front_parts)
+    raw_back = "".join(raw_back_parts) + _joined_raw(fields, model.back_indexes)
+    expected = list(dict.fromkeys(text for text in (_clean(answer) for answer in answers) if text))
+    return raw_front, raw_back, front, "\n".join(back_parts), expected
 
 
 def _models(
@@ -182,7 +273,21 @@ def _models(
         forced_multiple = any(token in name_hint for token in ("multiple", "multi", "多选"))
         detected: KindleModel | None = None
         reason = None
-        if len(option_indexes) > 64:
+        if _is_cloze_model(model):
+            cloze_indexes = _cloze_field_indexes(model, indexes)
+            extra_index = _find_index(indexes, ("back extra", "extra", "背面额外"))
+            detected = KindleModel(
+                model_id=model_id,
+                name=name,
+                kind="cloze",
+                front_indexes=cloze_indexes,
+                back_indexes=(
+                    (extra_index,)
+                    if extra_index is not None and extra_index not in cloze_indexes
+                    else ()
+                ),
+            )
+        elif len(option_indexes) > 64:
             reason = f"{name}: too_many_options"
         elif len(option_indexes) >= 2 and question_index is not None and correct_index is not None:
             detected = KindleModel(
@@ -240,7 +345,15 @@ def _models(
             mapped_front = _parse_mapping_indexes(spec.get("front"), len(names), f"{name} front")
             mapped_back = _parse_mapping_indexes(spec.get("back"), len(names), f"{name} back")
             if mapped_front:
-                if detected and detected.kind == "choice":
+                if detected and detected.kind == "cloze":
+                    detected = KindleModel(
+                        model_id=model_id,
+                        name=name,
+                        kind="cloze",
+                        front_indexes=mapped_front,
+                        back_indexes=mapped_back,
+                    )
+                elif detected and detected.kind == "choice":
                     detected = KindleModel(
                         model_id=model_id,
                         name=name,
@@ -624,7 +737,9 @@ def import_apkg(
             if model is None:
                 skipped["unsupported_model"] += 1
                 continue
-            if int(row["card_ord"] or 0) != 0:
+            # A cloze note's card ord is its cloze number minus one, not a
+            # second template.
+            if model.kind != "cloze" and int(row["card_ord"] or 0) != 0:
                 skipped["non_primary_template"] += 1
                 continue
             source_deck = row["original_deck_id"] or row["deck_id"]
@@ -633,7 +748,25 @@ def import_apkg(
                 continue
             fields = str(row["fields"] or "").split("\x1f")
             card_has_media = False
-            if model.kind == "choice":
+            if model.kind == "cloze":
+                rendered = _cloze_card(fields, model, int(row["card_ord"] or 0) + 1)
+                if isinstance(rendered, str):
+                    skipped[rendered] += 1
+                    continue
+                raw_front, raw_back, front, back, expected = rendered
+                card_has_media = _has_media(raw_front) or _has_media(raw_back)
+                front_images = _image_refs(raw_front, media_catalog)
+                back_images = _image_refs(raw_back, media_catalog)
+                if not front and not front_images:
+                    skipped["empty_front"] += 1
+                    continue
+                if not back and not back_images:
+                    skipped["empty_back"] += 1
+                    continue
+                card_fields: dict[str, Any] = {"type": "short_answer", "front": front, "back": back}
+                if len(expected) == 1:
+                    card_fields["expected_answers"] = expected
+            elif model.kind == "choice":
                 raw_question = _joined_raw(fields, model.front_indexes)
                 raw_back = _joined_raw(fields, model.back_indexes)
                 card_has_media = _has_media(raw_question) or _has_media(raw_back)
@@ -661,7 +794,7 @@ def import_apkg(
                     if part:
                         back_parts.append(part)
                 back = "\n".join(back_parts)
-                if not front:
+                if not front and not front_images:
                     skipped["empty_front"] += 1
                     continue
                 if len(options) < 2:
@@ -673,7 +806,7 @@ def import_apkg(
                 if not back:
                     back = "Correct option(s): " + ", ".join(_option_label(index) for index in correct)
                 mode = "multiple" if model.forced_multiple or len(correct) > 1 else "single"
-                card_fields: dict[str, Any] = {
+                card_fields = {
                     "type": "choice",
                     "mode": mode,
                     "front": front,
@@ -689,10 +822,11 @@ def import_apkg(
                 back_images = _image_refs(raw_back, media_catalog)
                 front = _joined_text(fields, model.front_indexes)
                 back = _joined_text(fields, model.back_indexes)
-                if not front:
+                # A side may be only images; it still needs one or the other.
+                if not front and not front_images:
                     skipped["empty_front"] += 1
                     continue
-                if not back:
+                if not back and not back_images:
                     skipped["empty_back"] += 1
                     continue
                 embedded = _embedded_choice(front, back)
@@ -733,8 +867,16 @@ def import_apkg(
             deck_cards.setdefault(device_deck_id, []).append(card_id)
 
         if not cards:
-            raise AnkiImportError(
+            reasons = dict(sorted(skipped.items()))
+            detail = ", ".join(f"{key}={value}" for key, value in reasons.items())
+            raise NoImportableCardsError(
                 "no importable cards in this .apkg (all notes were skipped or unsupported)"
+                + (f": {detail}" if detail else ""),
+                {
+                    "total_cards": len(rows),
+                    "skipped_reasons": reasons,
+                    "unsupported_models": sorted(unsupported),
+                },
             )
         normalized_decks = [
             {"id": deck_id, "name": deck_names[deck_id], "card_ids": deck_cards[deck_id]}

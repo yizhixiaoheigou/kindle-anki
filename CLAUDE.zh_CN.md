@@ -46,7 +46,7 @@ scripts/kindle-deploy.sh <kindle-ip> --enable-restart  # 每台 Kindle 执行一
 
 项目分三部分，共用同一份契约——**包格式**（`docs/PACK_FORMAT.md`）：`name.kindle-anki.json` 加同名 `name.kindle-anki.media/`，打包成 `name.kindle-anki.zip`。
 
-1. **桌面转换器（`tools/`，Python 标准库）。** `kindle_apkg.py` 读取 `.apkg` 里的 SQLite 集合。`kindle_anki_importer.py` 把笔记映射成卡片：Basic 类笔记变成 `short_answer`，带 `||` 选项字段的笔记变成 `choice`；它还提供驱动字段映射的 `inspect_apkg`。`kindle_cards.py` 定义标准包结构（`FORMAT_NAME = "kindle-anki"`）。`kindle_bundle.py` 写出 JSON、媒体目录和 zip，并去掉 `ai.api_key`。`kindle_import_app.py` 是 Tk 窗口，视觉常量在 `kindle_import_ui.py`；它还运行 `kindle_pack_server.py`（插件拉取用的 `:8766` 局域网服务），并负责 4 位配对码的 AI 设置配对。测试模块把 `tools/` 加进 `sys.path`，直接按模块名导入。
+1. **桌面转换器（`tools/`，Python 标准库）。** `kindle_apkg.py` 读取 `.apkg` 里的 SQLite 集合。`kindle_anki_importer.py` 把笔记映射成卡片：Basic 类笔记变成 `short_answer`，带 `||` 选项字段的笔记变成 `choice`，填空笔记（模型 `type` 为 1）按填空编号各变成一张 `short_answer`；它还提供驱动字段映射的 `inspect_apkg`。`kindle_cards.py` 定义标准包结构（`FORMAT_NAME = "kindle-anki"`）。`kindle_bundle.py` 写出 JSON、媒体目录和 zip，并去掉 `ai.api_key`。`kindle_import_app.py` 是 Tk 窗口，视觉常量在 `kindle_import_ui.py`；它还运行 `kindle_pack_server.py`（插件拉取用的 `:8766` 局域网服务），并负责 4 位配对码的 AI 设置配对。测试模块把 `tools/` 加进 `sys.path`，直接按模块名导入。
 
 2. **浏览器转换器（`plugin/kindleanki.koplugin/web/*.js`）。** 这是 Python 流水线的 JS 移植，由插件提供页面，在手机或电脑浏览器里运行，然后上传成品包。`test_kindle_web_converter.py` 用同一个合成 `.apkg` 同时跑两套转换器，要求包字段、zip 布局和 inspect 报告完全一致。**改转换逻辑时，Python 和 JS 必须同步修改。**
 

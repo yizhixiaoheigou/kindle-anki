@@ -15,6 +15,16 @@ never rewrites existing pack JSON.
 `correct_indices` are zero-based. Packed Anki option fields use `||`; answers
 in those fields are 1-based.
 
+`front` and `back` are plain text. A side's text may be empty only when that
+side has images (`front_images` or `back_images`); the plugin only checks
+that both are strings, so older plugins load such cards too.
+
+Cloze notes become `short_answer` cards, one per cloze number. The front
+shows the active deletion as `[...]` (or `[hint]`) and the others as plain
+text; the back shows it as `[answer]`, then the Back Extra field. When the
+active deletion has one answer, it is also stored in `expected_answers`,
+which **Type answer** compares against.
+
 Images sit under the matching side's text and scale to the smaller of 90%
 width or 50% height.
 

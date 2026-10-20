@@ -6,7 +6,7 @@
 
 # Kindle Anki
 
-在越狱 Kindle 的 KOReader 里刷 Anki `.apkg`（简答、选择题、图片）。用手机扫 Kindle 上的
+在越狱 Kindle 的 KOReader 里刷 Anki `.apkg`（简答、选择、填空，含图片）。用手机扫 Kindle 上的
 二维码，在打开的网页里选 `.apkg`，转换好的卡包直接落到 Kindle。进度只留在 Kindle。
 
 **不是官方 Anki。不兼容 AnkiWeb。不是亚马逊产品。不是 KOReader 官方插件。**
@@ -39,7 +39,7 @@ Kindle 上的效果（照片是旧版学习界面）：
 ## 给谁用
 
 - 已越狱、装着 [KOReader](https://github.com/koreader/koreader)（开源的 Kindle 阅读系统）的 Kindle。
-- 手里已有 `.apkg` 卡包——用电脑版 [Anki](https://apps.ankiweb.net/) 的「导出」功能生成（含选择题和图片）。
+- 手里已有 `.apkg` 卡包——用电脑版 [Anki](https://apps.ankiweb.net/) 的「导出」功能生成（含选择题、填空题和图片）。
 
 本工具不包含、也不提供任何越狱方法；是否越狱由你自行决定并自担风险。
 
@@ -111,7 +111,7 @@ AI 解析只用 Kindle 上保存的一份设置，卡包里自带的 AI 字段�
 
 ## 和 KAnki / anki.koplugin 的差别
 
-本工具在**手机或电脑浏览器里（或用电脑转换器）转换已有的 `.apkg`**（选择题 + 图），在 KOReader
+本工具在**手机或电脑浏览器里（或用电脑转换器）转换已有的 `.apkg`**（选择题、填空题 + 图），在 KOReader
 里用独立调度刷。
 
 ## 开发

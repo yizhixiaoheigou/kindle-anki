@@ -51,6 +51,7 @@ COPY = {
     "back": "背面",
     "kind_short": "简答",
     "kind_choice": "选择",
+    "kind_cloze": "填空",
     "kind_unknown": "未识别，按简答导入",
     "unsupported": "有 {n} 种笔记类型无法识别。",
     "field_unnamed": "字段 {n}",
@@ -73,6 +74,7 @@ COPY = {
     "inspect_fail_title": "打不开这个文件。",
     "inspect_fail_body": "确认是 Anki 导出的 .apkg，不是 .colpkg，也不是只用新格式的备份。",
     "convert_fail": "转换失败。卡包没改动。",
+    "no_cards": "没有可导入的卡片：{total} 张全部跳过（{reasons}）。",
     "share_fail": "无法开启无线导入：{err}",
     "ip_copied": "已复制 IP。",
     "file_dialog_apkg": "选择 Anki .apkg",
@@ -239,8 +241,49 @@ def kind_label(kind: str) -> str:
     return {
         "short_answer": COPY["kind_short"],
         "choice": COPY["kind_choice"],
+        "cloze": COPY["kind_cloze"],
         "unknown": COPY["kind_unknown"],
     }.get(kind, COPY["kind_unknown"])
+
+
+SKIP_REASONS = {
+    "unsupported_model": "笔记类型不支持",
+    "non_primary_template": "非主模板",
+    "missing_deck": "缺少牌组",
+    "empty_front": "正面为空",
+    "empty_back": "背面为空",
+    "not_enough_options": "选项不足",
+    "unreadable_correct_answer": "无法识别答案",
+    "image_occlusion": "图片遮挡卡",
+}
+
+# What to change, for the reason that skipped the most cards. Keep in step
+# with skipSummary/skipHint in plugin/kindleanki.koplugin/web/app.js.
+SKIP_HINTS = {
+    "unsupported_model": "认不出笔记类型。给它勾上正面和背面字段再转。",
+    "non_primary_template": "每条笔记只导入第一张卡，反向卡会跳过。",
+    "missing_deck": "导出文件里找不到卡片所在的牌组。在 Anki 里重新导出整个牌组。",
+    "empty_front": "勾选的正面字段既没有文字也没有图片。换一个正面字段再转。",
+    "empty_back": "勾选的背面字段既没有文字也没有图片（只有音频也算空）。给背面换一个有内容的字段。",
+    "not_enough_options": "选择题读不出两个以上选项。检查选项字段。",
+    "unreadable_correct_answer": "选择题的答案读不出来。检查答案字段。",
+    "image_occlusion": "Anki 的图片遮挡卡暂不支持。",
+}
+
+
+def skip_summary(reasons: dict) -> str:
+    return "，".join(f"{SKIP_REASONS.get(key, key)} {count}" for key, count in reasons.items())
+
+
+def no_cards_text(report: dict) -> str:
+    reasons = dict(report.get("skipped_reasons") or {})
+    text = COPY["no_cards"].format(total=report.get("total_cards", 0), reasons=skip_summary(reasons))
+    if reasons:
+        top = max(reasons, key=lambda key: reasons[key])
+        hint = SKIP_HINTS.get(top)
+        if hint:
+            text += hint
+    return text
 
 
 def mapping_fronts_complete(mapping: dict) -> bool:

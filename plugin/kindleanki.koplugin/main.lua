@@ -1098,14 +1098,17 @@ function KindleAnki:card_text_blocks(card, prefix, include_back)
         end
         options = table.concat(lines, "\n")
     end
+    -- A side that is only images has empty text; leave its block out.
+    local front = tostring(card.front or "")
+    local back = tostring(card.back or "")
     if include_back then
-        table.insert(blocks, { role = "muted", text = tostring(card.front or "") })
+        if front ~= "" then table.insert(blocks, { role = "muted", text = front }) end
         if options then table.insert(blocks, { role = "muted", text = options }) end
         table.insert(blocks, { role = "rule", text = "" })
-        table.insert(blocks, { role = "main", text = tostring(card.back or "") })
+        if back ~= "" then table.insert(blocks, { role = "main", text = back }) end
         return blocks
     end
-    table.insert(blocks, { role = "main", text = tostring(card.front or "") })
+    if front ~= "" then table.insert(blocks, { role = "main", text = front }) end
     if options then table.insert(blocks, { role = "options", text = options }) end
     return blocks
 end
@@ -1283,7 +1286,7 @@ function KindleAnki:open_typing_dialog(card)
     local dialog
     dialog = InputDialog:new{
         title = _("Type your answer"),
-        description = card.front,
+        description = card.front ~= "" and card.front or nil,
         input = "",
         allow_newline = true,
         fullscreen = true,

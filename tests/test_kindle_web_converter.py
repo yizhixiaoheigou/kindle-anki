@@ -25,9 +25,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from test_kindle_cards import _make_apkg  # noqa: E402
+from test_kindle_cards import _cloze_model, _make_apkg, _make_shapes_apkg, _write_collection  # noqa: E402
 
 from kindle_anki_importer import import_apkg, inspect_apkg  # noqa: E402
+from kindle_apkg import NoImportableCardsError  # noqa: E402
 from kindle_bundle import write_kindle_bundle  # noqa: E402
 
 NODE = shutil.which("node")
@@ -326,6 +327,53 @@ class WebConverterConformance(unittest.TestCase):
         self.assertEqual(js_package, python_package)
         self.assertEqual(len(python_package["cards"]), 2)
         self.assertEqual(python_package["cards"][0]["front"], "注释卡正面")
+
+    def test_cloze_and_image_only_cards_match_python(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-web-shapes-") as temp:
+            apkg = Path(temp) / "shapes.apkg"
+            _make_shapes_apkg(apkg)
+            python_package, python_zip, js_package, js_zip = _convert_both(apkg, Path(temp))
+            self.assertEqual(js_package, python_package)
+            with zipfile.ZipFile(js_zip) as js_archive, zipfile.ZipFile(python_zip) as py_archive:
+                self.assertEqual(set(js_archive.namelist()), set(py_archive.namelist()))
+            out = Path(temp) / "inspect.json"
+            _run_node(RUNNER, "--inspect", apkg, out)
+            self.assertEqual(json.loads(out.read_text(encoding="utf-8")), inspect_apkg(apkg))
+            mapping = {"1": {"front": [0], "back": []}, "2": {"front": [1], "back": [0]}}
+            map_path = Path(temp) / "mapping.json"
+            map_path.write_text(json.dumps(mapping), encoding="utf-8")
+            mapped_path = Path(temp) / "mapped.json"
+            _run_node(RUNNER, "--map", map_path, apkg, mapped_path)
+            self.assertEqual(
+                json.loads(mapped_path.read_text(encoding="utf-8")),
+                import_apkg(apkg, AI, field_mapping=mapping),
+            )
+        self.assertEqual(python_package["report"]["imported_cards"], 6)
+
+    def test_all_skipped_error_matches_python(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-web-skipped-") as temp:
+            apkg = Path(temp) / "io.apkg"
+            models = {
+                "2": _model(2, "Basic", ["Front", "Back"]),
+                "3": _cloze_model(3, "Image Occlusion", ["Occlusion", "Image"], "{{cloze:Occlusion}}"),
+            }
+            _write_collection(
+                apkg, models,
+                [(100, 3, '{{c1::image-occlusion:rect:left=.1}}\x1f<img src="io.png">'),
+                 (101, 2, "word\x1f[sound:w.mp3]")],
+                [(200, 100, 0), (201, 101, 0), (202, 101, 1)],
+            )
+            out = Path(temp) / "error.json"
+            _run_node(RUNNER, "--expect-error", apkg, out)
+            js_error = json.loads(out.read_text(encoding="utf-8"))
+            with self.assertRaises(NoImportableCardsError) as ctx:
+                import_apkg(apkg, AI)
+        self.assertEqual(js_error["message"], str(ctx.exception))
+        self.assertEqual(js_error["report"], ctx.exception.report)
+        self.assertEqual(
+            js_error["report"]["skipped_reasons"],
+            {"empty_back": 1, "image_occlusion": 1, "non_primary_template": 1},
+        )
 
     def test_rejects_non_apkg_name(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-web-reject-") as temp:

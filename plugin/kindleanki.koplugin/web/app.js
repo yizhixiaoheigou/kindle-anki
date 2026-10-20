@@ -41,7 +41,10 @@
         status.setAttribute("data-state", kind);
         status.textContent = message;
     }
-    function errorText(err) { return (err && err.message) || String(err); }
+    function errorText(err) {
+        if (err && err.report) return noCardsText(err.report);
+        return (err && err.message) || String(err);
+    }
 
     // Anki fields hold HTML. Show what a reader sees, not the markup.
     function plainText(raw) {
@@ -450,10 +453,34 @@
             empty_back: "背面为空",
             not_enough_options: "选项不足",
             unreadable_correct_answer: "无法识别答案",
+            image_occlusion: "图片遮挡卡",
         };
         return Object.keys(reasons).map(function (key) {
             return (names[key] || key) + " " + reasons[key];
         }).join("，");
+    }
+
+    // What to change, for the reason that skipped the most cards. Keep in
+    // step with SKIP_HINTS in tools/kindle_import_ui.py.
+    var SKIP_HINTS = {
+        unsupported_model: "认不出笔记类型。给它勾上正面和背面字段再转。",
+        non_primary_template: "每条笔记只导入第一张卡，反向卡会跳过。",
+        missing_deck: "导出文件里找不到卡片所在的牌组。在 Anki 里重新导出整个牌组。",
+        empty_front: "勾选的正面字段既没有文字也没有图片。换一个正面字段再转。",
+        empty_back: "勾选的背面字段既没有文字也没有图片（只有音频也算空）。给背面换一个有内容的字段。",
+        not_enough_options: "选择题读不出两个以上选项。检查选项字段。",
+        unreadable_correct_answer: "选择题的答案读不出来。检查答案字段。",
+        image_occlusion: "Anki 的图片遮挡卡暂不支持。",
+    };
+
+    function noCardsText(report) {
+        var reasons = report.skipped_reasons || {};
+        var top = null;
+        Object.keys(reasons).forEach(function (key) {
+            if (top === null || reasons[key] > reasons[top]) top = key;
+        });
+        return "没有可导入的卡片：" + (report.total_cards || 0) + " 张全部跳过（" +
+            skipSummary(reasons) + "）。" + (top && SKIP_HINTS[top] ? SKIP_HINTS[top] : "");
     }
 
     function setBusy(label) {

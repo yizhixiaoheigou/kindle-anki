@@ -21,6 +21,14 @@ class AnkiImportError(ValueError):
     """Raised when an .apkg cannot be read by the Kindle importer."""
 
 
+class NoImportableCardsError(AnkiImportError):
+    """Raised when every card was skipped; ``report`` says why."""
+
+    def __init__(self, message: str, report: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.report = report
+
+
 MAX_ZIP_ENTRY_BYTES = 512 * 1024 * 1024
 
 

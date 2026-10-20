@@ -4,6 +4,15 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- The converters import Cloze notes: each cloze number becomes a card that
+  hides that deletion as `[...]` (or its hint) and reveals it on the back,
+  followed by Back Extra. **Type answer** checks a single-answer cloze.
+  Anki's image occlusion notes are skipped with their own reason.
+- A card side that is only an image now converts; before, an image-only
+  front or back counted as empty and the card was skipped.
+- When nothing in an `.apkg` converts, the desktop converter and the browser
+  page now say how many cards were skipped for which reason and what to
+  change, instead of only "no importable cards".
 - AI setup suggests DeepSeek: on a Kindle without AI settings, the browser
   page and the Kindle's own AI dialog fill in `https://api.deepseek.com` and
   `deepseek-flash`, so only the key is left to enter. A Kindle that already

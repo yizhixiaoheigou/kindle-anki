@@ -319,6 +319,41 @@ check("old: choice result without markup", not has_markup(viewer.text)
     and viewer.text:find("你的选择：B\n正确答案：B", 1, true) ~= nil)
 
 -- ------------------------------------------------------------------
+-- Image-only sides: no empty text block on either build
+-- ------------------------------------------------------------------
+
+local image_only_card = {
+    id = "c3",
+    type = "short_answer",
+    front = "",
+    back = "",
+    front_images = { "q.png" },
+    back_images = { "a.png" },
+}
+
+TextViewer.html_text_formats = NEW_TEXTVIEWER_FORMATS
+plugin = new_plugin(image_only_card)
+plugin:show_card()
+viewer = last_viewer()
+check("new: image-only front embeds image", viewer.text:find('src="p.kindle-anki.media/q.png"', 1, true) ~= nil)
+check("new: image-only front has no empty block", viewer.text:find("<div style=\"margin-bottom:0.8em;font-size:1.3em;line-height:1.45\"></div>", 1, true) == nil)
+plugin:show_answer(nil, nil)
+viewer = last_viewer()
+check("new: image-only back embeds image", viewer.text:find('src="p.kindle-anki.media/a.png"', 1, true) ~= nil)
+check("new: image-only back starts with the rule", viewer.text:find("^<div style=\"border%-top") ~= nil)
+
+TextViewer.html_text_formats = nil
+plugin = new_plugin(image_only_card)
+plugin:show_card()
+viewer = last_viewer()
+check("old: image-only front is blank text", viewer.text == "")
+check("old: image-only front image button", find_button(viewer, "查看图片（1）") ~= nil)
+plugin:show_answer(nil, nil)
+viewer = last_viewer()
+check("old: image-only back is just the rule", viewer.text == "────────")
+check("old: image-only back image button", find_button(viewer, "查看图片（1）") ~= nil)
+
+-- ------------------------------------------------------------------
 -- AI conversation paging on both builds
 -- ------------------------------------------------------------------
 
