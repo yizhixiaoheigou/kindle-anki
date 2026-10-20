@@ -25,7 +25,7 @@ official plugin.
 Packs already under `/mnt/us/folo-anki/` still list. New imports go to
 `/mnt/us/kindle-anki/packs/`. See [MIGRATION.md](MIGRATION.md).
 
-## 2. Convert an Anki deck on a computer
+## 2. Convert on a computer without Wi-Fi
 
 With the Kindle on the same Wi-Fi, skip this section: open the Kindle's
 import page (section 3) in the computer's browser instead.
@@ -111,11 +111,15 @@ code.
 
 Leave the dialog's **Stop** for when you are done; the small server on port
 8767 closes with it. It also closes by itself after 30 minutes with no
-visits. It has no password — home Wi-Fi only, like the computer
+visits. It has no password — home Wi-Fi only, like the Python
 converter's port 8766. The Kindle never unpacks Anki files itself; it only
 receives the finished pack.
 
-### From the Python converter (Wi-Fi, no USB)
+### Over USB
+
+Copy a zip from the offline converter (section 2) onto the Kindle and use **Import packs → A file already on this Kindle**.
+
+### From the Python converter (Wi-Fi, developers)
 
 This needs the Python converter run from source (section 2). Keep its window open. The dock on the right shows the LAN IP in large
 type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
@@ -127,8 +131,6 @@ Port **8766** has no password. Home Wi-Fi only.
 4. Pick the pack. The plugin downloads it itself.
 
 If macOS asks to allow Python incoming connections, allow it on a home network.
-
-USB is only a fallback: copy the zip onto the Kindle and use **Import packs → A file already on this Kindle**.
 
 To remove a pack: **Tools → Kindle Anki → Manage packs**, or the menu icon
 at the top left of **Open packs**. Progress and AI chats for that pack go with it.

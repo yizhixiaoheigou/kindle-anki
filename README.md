@@ -44,7 +44,8 @@ is your own decision and your own risk.
 - Jailbroken Kindle with KOReader. v2026.07 or newer shows card images inline;
   older builds show cards as plain text with a **View images** button.
 - A phone or computer with a browser. Nothing to install.
-- Kindle and phone on the same **home** Wi-Fi.
+- Kindle and phone on the same **home** Wi-Fi, or a USB cable and the
+  offline converter (below).
 
 ## Install the plugin
 
@@ -72,15 +73,15 @@ Details: [docs/USER_GUIDE.md](docs/USER_GUIDE.md). Old paths:
   Scanned with WeChat or another in-app browser, the page explains how to
   switch to the real browser. Its **卡包** tab lists and deletes packs on the
   Kindle.
-- **Computer converter over Wi-Fi.** For the Python converter run from
-  source (below): keep its window open and enter the IP it shows. Port 8766
-  has **no password** and is for home Wi-Fi only.
 - **A file already on this Kindle.** Copy a `.kindle-anki.zip` over USB and
   pick it. Without Wi-Fi, make the zip with the offline converter below.
+- **Computer converter over Wi-Fi.** For developers only: it needs the
+  Python converter run from source (below). Keep its window open and enter
+  the IP it shows. Port 8766 has **no password** and is for home Wi-Fi only.
 
 The page closes by itself after 30 minutes without visits.
 
-### Computer converter (optional)
+### Without Wi-Fi: the offline converter
 
 `Kindle-Anki-converter-v<version>.html` from the release is the same import
 page as one offline file. Double-click it on macOS, Windows, or Linux; it
