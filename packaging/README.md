@@ -67,6 +67,8 @@ picks it up. `desktop/Kindle-Anki-Import.bat` also finds it there.
 ./packaging/make_release_zips.sh 0.2.0
 ```
 
-Writes into `dist/release/`. Zip A is the plugin. Zip B is the Python fallback
+Writes into `dist/release/`. Zip A is the plugin, its Lua files plus `web/`
+(the browser import page); the script fails if `web/` is missing. Zip B is the Python fallback
 with launchers whose `here` is the zip root. Zip C is the macOS `.app` and
-Zip D is the Windows onedir; each is added only if it exists.
+Zip D is the Windows onedir; each is added only if it exists and is newer
+than `tools/`, so an old build never ships under a new version.

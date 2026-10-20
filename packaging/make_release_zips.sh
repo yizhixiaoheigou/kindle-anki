@@ -34,9 +34,27 @@ plugin_stage="$stage/plugin"
 mkdir -p "$plugin_stage/kindleanki.koplugin"
 cp "$root/plugin/kindleanki.koplugin/"*.lua "$plugin_stage/kindleanki.koplugin/"
 cp "$root/plugin/kindleanki.koplugin/LICENSE" "$plugin_stage/kindleanki.koplugin/"
+# The browser import page (:8767) is served from the plugin's own web/.
+cp -R "$root/plugin/kindleanki.koplugin/web" "$plugin_stage/kindleanki.koplugin/"
 plugin_zip="$out/kindleanki.koplugin-v${version}.zip"
+rm -f "$plugin_zip"
 ( cd "$plugin_stage" && zip -r "$plugin_zip" kindleanki.koplugin )
 fail_if_forbidden "$plugin_zip"
+if ! unzip -Z -1 "$plugin_zip" | grep -qx 'kindleanki.koplugin/web/index.html'; then
+  echo "web/ missing from $plugin_zip" >&2
+  exit 1
+fi
+
+# A built app older than the converter sources would ship old code under
+# the new version number; leave it out and say so.
+stale_build() {
+  local built="$1"
+  if [[ -n "$(find "$root/tools" -name 'kindle_*.py' -newer "$built" -print -quit)" ]]; then
+    echo "skipping $built: older than tools/; rebuild it first" >&2
+    return 0
+  fi
+  return 1
+}
 
 conv_stage="$stage/converter"
 mkdir -p "$conv_stage/tools" "$conv_stage/docs"
@@ -67,17 +85,22 @@ echo Need Python 3. Install it from https://www.python.org/downloads/ then doubl
 pause
 EOF
 conv_zip="$out/Kindle-Anki-converter-v${version}.zip"
+rm -f "$conv_zip"
 ( cd "$conv_stage" && zip -r "$conv_zip" . )
 fail_if_forbidden "$conv_zip"
 
-if [[ -d "$root/dist/Kindle Anki Import.app" ]]; then
+mac_app="$root/dist/Kindle Anki Import.app"
+if [[ -d "$mac_app" ]] && ! stale_build "$mac_app/Contents/MacOS"; then
   mac_zip="$out/Kindle-Anki-Import-macOS-v${version}.zip"
+  rm -f "$mac_zip"
   ( cd "$root/dist" && zip -ry "$mac_zip" "Kindle Anki Import.app" )
   fail_if_forbidden "$mac_zip"
 fi
 
-if [[ -d "$root/dist/Kindle-Anki-Import" ]]; then
+win_dir="$root/dist/Kindle-Anki-Import"
+if [[ -d "$win_dir" ]] && ! stale_build "$win_dir/Kindle-Anki-Import.exe"; then
   win_zip="$out/Kindle-Anki-Import-windows-v${version}.zip"
+  rm -f "$win_zip"
   ( cd "$root/dist" && zip -r "$win_zip" "Kindle-Anki-Import" )
   fail_if_forbidden "$win_zip"
 fi

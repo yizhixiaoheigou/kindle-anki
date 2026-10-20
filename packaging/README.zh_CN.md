@@ -66,5 +66,6 @@ packaging\build_windows.bat
 ./packaging/make_release_zips.sh 0.2.0
 ```
 
-写到 `dist/release/`。Zip A 是插件。Zip B 是 Python 退路，启动脚本的 `here` 是
-zip 根目录。Zip C 是 macOS `.app`，Zip D 是 Windows onedir；各自存在时才加入。
+写到 `dist/release/`。Zip A 是插件，包含 Lua 文件和 `web/`（浏览器导入页）；缺了 `web/`
+脚本会报错退出。Zip B 是 Python 退路，启动脚本的 `here` 是
+zip 根目录。Zip C 是 macOS `.app`，Zip D 是 Windows onedir；各自存在且比 `tools/` 新时才加入，旧构建不会顶着新版本号发出去。
