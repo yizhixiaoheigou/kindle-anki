@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import html
 import json
 from pathlib import Path
@@ -21,6 +21,7 @@ import re
 import sqlite3
 import zipfile
 from typing import Any, Iterable
+from urllib.parse import unquote
 
 from kindle_apkg import (
     AnkiImportError,
@@ -34,7 +35,15 @@ from kindle_apkg import (
     _read_collection,
     read_checked,
 )
-from kindle_cards import FORMAT_NAME, FORMAT_VERSION, PACK_SUFFIX, KindlePackageError, pack_stem, save_package
+from kindle_cards import (
+    FORMAT_NAME,
+    FORMAT_VERSION,
+    MAX_IMAGES_PER_CARD,
+    PACK_SUFFIX,
+    KindlePackageError,
+    pack_stem,
+    save_package,
+)
 
 
 @dataclass(frozen=True)
@@ -52,6 +61,11 @@ class KindleModel:
     explanation_index: int | None = None
     packed_options_index: int | None = None
     forced_multiple: bool = False
+    # Template ords whose question shows the back fields ("Basic (and
+    # reversed card)"); those cards import with front and back swapped.
+    reverse_ords: tuple[int, ...] = ()
+    # The field a {{type:Field}} box on the first template checks.
+    type_answer_index: int | None = None
 
 
 _MEDIA_MARKUP = re.compile(
@@ -66,9 +80,10 @@ _IMAGE_SHORTCODE = re.compile(r"\[ankiimage:([^\]]+)\]", re.IGNORECASE)
 _EMBEDDED_OPTION = re.compile(
     r"^\s*([A-Z])\s*[\.．、:：]\s*(.+?)\s*$", re.MULTILINE
 )
+# Answer labels at the start of the back ("A", "A、C", "B. ..."), but not an
+# English sentence that starts with "A" ("A good plan").
 _ANSWER_LABELS = re.compile(
-    r"^\s*([A-Z](?:\s*[,，、/]\s*[A-Z])*)\s*[\.．、:：]?\s*(?:\s|$)",
-    re.IGNORECASE,
+    r"^\s*([A-Z](?:\s*[,，、/]\s*[A-Z])*)(?!\s+[a-z])\s*[\.．、:：]?\s*(?:\s|$)"
 )
 # One cloze deletion with no nested "{{" or "}}" inside, so repeated passes
 # resolve nested clozes from the innermost out.
@@ -77,6 +92,7 @@ _CLOZE = re.compile(
     re.DOTALL,
 )
 _CLOZE_TEMPLATE_FIELD = re.compile(r"\{\{cloze:([^}]+)\}\}", re.IGNORECASE)
+_TEMPLATE_REF = re.compile(r"\{\{([^{}]+)\}\}")
 _IMAGE_OCCLUSION = "image-occlusion:"
 # Field names that usually hold the answer, for note types nothing else
 # recognised. Checked in this order.
@@ -138,7 +154,8 @@ def _joined_raw(fields: list[str], indexes: tuple[int, ...]) -> str:
 
 def _suggest_back(names: list[str], sample: list[str]) -> list[int]:
     """Back field for an unrecognised note type: a field named like an
-    answer, else the first later field with text in the first note."""
+    answer, else the first later field with text or an image in the first
+    note."""
 
     if len(names) < 2:
         return []
@@ -147,14 +164,46 @@ def _suggest_back(names: list[str], sample: list[str]) -> list[int]:
         if _key(hint) in keyed:
             return [keyed[_key(hint)]]
     for index in range(1, len(names)):
-        if _clean(_extract_field(sample, index)):
+        value = _extract_field(sample, index)
+        if _clean(value) or _IMAGE_SRC.search(value) or _IMAGE_SHORTCODE.search(value):
             return [index]
     return [len(names) - 1]
 
 
+def _template_refs(
+    model: dict[str, Any], indexes: dict[str, int]
+) -> dict[int, tuple[set[int], int | None]]:
+    """Per template ord: the fields its question side shows, and the field
+    its {{type:Field}} box checks."""
+
+    result: dict[int, tuple[set[int], int | None]] = {}
+    templates = model.get("tmpls")
+    for position, template in enumerate(templates if isinstance(templates, list) else []):
+        if not isinstance(template, dict):
+            continue
+        template_ord = template.get("ord", position)
+        if not isinstance(template_ord, int) or isinstance(template_ord, bool):
+            template_ord = position
+        shown: set[int] = set()
+        typed = None
+        for match in _TEMPLATE_REF.finditer(str(template.get("qfmt") or "")):
+            ref = match.group(1).strip()
+            if not ref or ref[0] in "#^/!":
+                continue
+            parts = [part.strip() for part in ref.split(":")]
+            index = indexes.get(_key(parts[-1]))
+            if index is None:
+                continue
+            shown.add(index)
+            if parts[0].casefold() == "type" and "cloze" not in (part.casefold() for part in parts):
+                typed = index
+        result[template_ord] = (shown, typed)
+    return result
+
+
 def _is_cloze_model(model: dict[str, Any]) -> bool:
     kind = model.get("type")
-    return isinstance(kind, int) and not isinstance(kind, bool) and kind == 1
+    return isinstance(kind, (int, float)) and not isinstance(kind, bool) and kind == 1
 
 
 def _cloze_field_indexes(model: dict[str, Any], indexes: dict[str, int]) -> tuple[int, ...]:
@@ -219,7 +268,7 @@ def _cloze_card(
         raw_back_parts.append(revealed)
         answers.extend(found)
     if not answers:
-        return "empty_front"
+        return "cloze_not_found"
     if any(html.unescape(answer).strip().startswith(_IMAGE_OCCLUSION) for answer in answers):
         return "image_occlusion"
     front = "\n".join(part for part in (_clean(raw) for raw in raw_front_parts) if part)
@@ -400,6 +449,18 @@ def _models(
                         front_indexes=mapped_front,
                         back_indexes=mapped_back,
                     )
+        if detected and detected.kind == "short_answer":
+            refs = _template_refs(model, indexes)
+            front_set, back_set = set(detected.front_indexes), set(detected.back_indexes)
+            detected = replace(
+                detected,
+                reverse_ords=tuple(sorted(
+                    template_ord
+                    for template_ord, (shown, _) in refs.items()
+                    if template_ord != 0 and shown & back_set and not shown & front_set
+                )),
+                type_answer_index=refs.get(0, (set(), None))[1],
+            )
         if detected:
             supported[model_id] = detected
         elif reason:
@@ -498,6 +559,10 @@ def _image_refs(value: str, catalog: dict[str, dict[str, Any]]) -> list[dict[str
     for raw_name in names:
         source_name = html.unescape(raw_name).strip()
         asset = catalog.get(source_name) or catalog.get(Path(source_name).name)
+        if asset is None:
+            # Anki's editor stores names with spaces or CJK URL-encoded.
+            decoded = unquote(source_name)
+            asset = catalog.get(decoded) or catalog.get(Path(decoded).name)
         if asset is None or asset["name"] in seen:
             continue
         seen.add(asset["name"])
@@ -506,7 +571,8 @@ def _image_refs(value: str, catalog: dict[str, dict[str, Any]]) -> list[dict[str
             "width": asset["width"],
             "height": asset["height"],
         })
-    return result
+    # A pack allows this many images per side; more would fail the whole pack.
+    return result[:MAX_IMAGES_PER_CARD]
 
 
 def _has_media(value: str) -> bool:
@@ -522,7 +588,40 @@ def _clean(value: str) -> str | None:
     return None if reason else text
 
 
+_OPTION_LINE_START = re.compile(r"^\s*([A-Z])\s*[\.．、:：]")
+
+
+def _split_inline_options(text: str) -> str:
+    """Put options written on one line ("A. 30% B. 20% C. 40%") on lines of
+    their own. Only the next letter in order splits a line, and only after a
+    space and not before a letter, so "采用 B.O.T 模式" stays whole."""
+
+    lines: list[str] = []
+    expected = None
+    for line in text.split("\n"):
+        start = _OPTION_LINE_START.match(line)
+        if not start or start.group(1) not in ("A", expected):
+            lines.append(line)
+            expected = None
+            continue
+        label = start.group(1)
+        while label < "Z":
+            following = chr(ord(label) + 1)
+            split = re.search(r"\s" + following + r"\s*[\.．、:：](?![A-Za-z.])", line[start.end():])
+            if not split:
+                break
+            cut = start.end() + split.start()
+            lines.append(line[:cut])
+            line = line[cut:].lstrip()
+            start = _OPTION_LINE_START.match(line)
+            label = following
+        lines.append(line)
+        expected = chr(ord(label) + 1)
+    return "\n".join(lines)
+
+
 def _embedded_choice(front: str, back: str) -> tuple[str, list[str], list[int]] | None:
+    front = _split_inline_options(front)
     matches = list(_EMBEDDED_OPTION.finditer(front))
     if len(matches) < 2 or matches[0].group(1) != "A":
         return None
@@ -576,12 +675,24 @@ def _correct_indices(raw: str, options: list[str]) -> list[int]:
     ]
     if token_matches and len(token_matches) == len(tokens):
         return sorted(set(token_matches))
+    normalized = re.sub(r"\s+", "", value).casefold()
+    for index, option in enumerate(options):
+        if normalized == re.sub(r"\s+", "", option).casefold():
+            return [index]
 
+    # Run-together labels ("ACD") only when short and every letter is an
+    # option, so a word such as "MITOCHONDRIA" is not read as labels.
+    condensed = upper.replace(" ", "")
+    run_together = (
+        re.fullmatch(r"[A-Z]+", condensed) is not None
+        and len(condensed) <= len(options)
+        and all(ord(letter) - 65 < len(options) for letter in condensed)
+    )
     found: list[int] = []
     for letter, index in ((chr(65 + i), i) for i in range(len(options))):
-        if re.search(rf"(?:^|[^A-Z]){letter}(?:$|[^A-Z])", upper) or re.fullmatch(
-            r"[A-Z]+", upper.replace(" ", "")
-        ) and letter in upper.replace(" ", ""):
+        if re.search(rf"(?:^|[^A-Z]){letter}(?:$|[^A-Z])", upper) or (
+            run_together and letter in condensed
+        ):
             found.append(index)
     if found:
         return sorted(set(found))
@@ -589,21 +700,46 @@ def _correct_indices(raw: str, options: list[str]) -> list[int]:
     numbers = [int(number) for number in re.findall(r"\d+", value)]
     if numbers and all(1 <= number <= len(options) for number in numbers):
         return sorted(set(number - 1 for number in numbers))
-    normalized = re.sub(r"\s+", "", value).casefold()
-    for index, option in enumerate(options):
-        if normalized == re.sub(r"\s+", "", option).casefold():
-            return [index]
     return []
 
 
-def _packed_options(raw: str) -> list[str]:
+def _packed_option_parts(raw: str) -> list[str]:
     text = re.sub(r"<br\s*/?>", "\n", raw or "", flags=re.I)
-    parts = [part.strip() for part in re.split(r"\|\|", text) if part.strip()]
+    return [part.strip() for part in re.split(r"\|\|", text) if part.strip()]
+
+
+def _packed_options(raw: str) -> list[str]:
     options: list[str] = []
-    for part in parts:
+    for part in _packed_option_parts(raw):
         item = _clean(part)
         if item:
             options.append(item)
+    return options
+
+
+def _options_with_images(
+    raw_options: list[str], front_images: list[dict[str, Any]], catalog: dict[str, dict[str, Any]]
+) -> list[str]:
+    """Option texts; an option's images join the question's images and the
+    option says which ones ("（见图）（图2）"), so an image-only option keeps
+    its place."""
+
+    options: list[str] = []
+    for raw in raw_options:
+        text = _clean(raw) or ""
+        numbers: list[str] = []
+        for image in _image_refs(raw, catalog):
+            names = [item["name"] for item in front_images]
+            if image["name"] not in names:
+                if len(front_images) >= MAX_IMAGES_PER_CARD:
+                    continue
+                front_images.append(image)
+                names.append(image["name"])
+            numbers.append(str(names.index(image["name"]) + 1))
+        if numbers:
+            text = (text + " " if text else "") + "（图" + "、".join(numbers) + "）"
+        if text:
+            options.append(text)
     return options
 
 
@@ -687,7 +823,11 @@ def inspect_apkg(apkg_path: Path) -> dict[str, Any]:
             deck_names.items(),
             key=lambda item: (-card_decks.get(item[0], 0), item[1]),
         )
-        suggested_title = ranked[0][1] if ranked and card_decks else ""
+        suggested_title = _title_for_decks([
+            (name, card_decks[deck_id], int(deck_id))
+            for deck_id, name in deck_names.items()
+            if card_decks.get(deck_id, 0) > 0
+        ])
         return {
             "title": apkg_path.stem,
             "file_name": apkg_path.name,
@@ -701,15 +841,38 @@ def inspect_apkg(apkg_path: Path) -> dict[str, Any]:
         temp_dir.cleanup()
 
 
-def _primary_deck_title(deck_names: dict[int, str], deck_cards: dict[int, list[int]]) -> str:
-    """Name of the deck holding the most cards; ties break alphabetically."""
-    if not deck_names:
+def _natural_key(name: str) -> list[tuple[int, int, str]]:
+    """Sort key that orders "第2章" before "第10章"."""
+    return [
+        (0, int(part), "") if part[0] in "0123456789" else (1, 0, part)
+        for part in re.split(r"([0-9]+)", name)
+        if part
+    ]
+
+
+def _deck_order(name: str, deck_id: int) -> tuple[list[tuple[int, int, str]], str, int]:
+    return _natural_key(name), name, deck_id
+
+
+def _title_for_decks(decks: list[tuple[str, int, int]]) -> str:
+    """Pack title from (name, card count, id) of the decks that hold cards.
+
+    Several decks under one parent ("高项合并::01 …", "高项合并::02 …") take
+    the parent's name; otherwise the deck with the most cards names the pack.
+    """
+
+    if not decks:
         return ""
-    ranked = sorted(
-        deck_names.items(),
-        key=lambda item: (-len(deck_cards.get(item[0], ())), item[1]),
-    )
-    return ranked[0][1]
+    if len(decks) > 1:
+        common: list[str] = []
+        for parts in zip(*(name.split("::") for name, _, _ in decks)):
+            if any(part != parts[0] for part in parts):
+                break
+            common.append(parts[0])
+        prefix = "::".join(common).strip()
+        if prefix:
+            return prefix
+    return min(decks, key=lambda deck: (-deck[1], deck[0], deck[2]))[0]
 
 
 def import_apkg(
@@ -763,8 +926,10 @@ def import_apkg(
                 skipped["unsupported_model"] += 1
                 continue
             # A cloze note's card ord is its cloze number minus one, not a
-            # second template.
-            if model.kind != "cloze" and int(row["card_ord"] or 0) != 0:
+            # second template; a reverse template swaps front and back.
+            card_ord = int(row["card_ord"] or 0)
+            reverse = model.kind == "short_answer" and card_ord in model.reverse_ords
+            if model.kind != "cloze" and card_ord != 0 and not reverse:
                 skipped["non_primary_template"] += 1
                 continue
             source_deck = row["original_deck_id"] or row["deck_id"]
@@ -774,7 +939,7 @@ def import_apkg(
             fields = str(row["fields"] or "").split("\x1f")
             card_has_media = False
             if model.kind == "cloze":
-                rendered = _cloze_card(fields, model, int(row["card_ord"] or 0) + 1)
+                rendered = _cloze_card(fields, model, card_ord + 1)
                 if isinstance(rendered, str):
                     skipped[rendered] += 1
                     continue
@@ -799,15 +964,11 @@ def import_apkg(
                 back_images = _image_refs(raw_back, media_catalog)
                 front = _joined_text(fields, model.front_indexes)
                 if model.packed_options_index is not None:
-                    options = _packed_options(_field(fields, model.packed_options_index))
+                    raw_options = _packed_option_parts(_field(fields, model.packed_options_index))
                 else:
-                    options = [
-                        option
-                        for option in (
-                            _clean(_extract_field(fields, index)) for index in model.option_indexes
-                        )
-                        if option
-                    ]
+                    raw_options = [_extract_field(fields, index) for index in model.option_indexes]
+                card_has_media = card_has_media or any(_has_media(raw) for raw in raw_options)
+                options = _options_with_images(raw_options, front_images, media_catalog)
                 correct_raw = _field(fields, model.correct_index)
                 correct = _correct_indices(correct_raw, options)
                 back_parts = []
@@ -840,13 +1001,16 @@ def import_apkg(
                     "correct_indices": correct,
                 }
             else:
-                raw_front = _joined_raw(fields, model.front_indexes)
-                raw_back = _joined_raw(fields, model.back_indexes)
+                front_indexes, back_indexes = model.front_indexes, model.back_indexes
+                if reverse:
+                    front_indexes, back_indexes = back_indexes, front_indexes
+                raw_front = _joined_raw(fields, front_indexes)
+                raw_back = _joined_raw(fields, back_indexes)
                 card_has_media = _has_media(raw_front) or _has_media(raw_back)
                 front_images = _image_refs(raw_front, media_catalog)
                 back_images = _image_refs(raw_back, media_catalog)
-                front = _joined_text(fields, model.front_indexes)
-                back = _joined_text(fields, model.back_indexes)
+                front = _joined_text(fields, front_indexes)
+                back = _joined_text(fields, back_indexes)
                 # A side may be only images; it still needs one or the other.
                 if not front and not front_images:
                     skipped["empty_front"] += 1
@@ -867,6 +1031,11 @@ def import_apkg(
                     }
                 else:
                     card_fields = {"type": "short_answer", "front": front, "back": back}
+                    typed = None
+                    if not reverse and model.type_answer_index is not None:
+                        typed = _clean(_field(fields, model.type_answer_index))
+                    if typed:
+                        card_fields["expected_answers"] = [typed]
 
             if front_images:
                 card_fields["front_images"] = front_images
@@ -905,9 +1074,15 @@ def import_apkg(
             )
         normalized_decks = [
             {"id": deck_id, "name": deck_names[deck_id], "card_ids": deck_cards[deck_id]}
-            for deck_id in sorted(deck_names, key=lambda item: (deck_names[item], item))
+            for deck_id in sorted(deck_names, key=lambda item: _deck_order(deck_names[item], item))
         ]
-        pack_title = (title or "").strip() or _primary_deck_title(deck_names, deck_cards) or apkg_path.stem
+        pack_title = (
+            (title or "").strip()
+            or _title_for_decks([
+                (name, len(deck_cards[deck_id]), deck_id) for deck_id, name in deck_names.items()
+            ])
+            or apkg_path.stem
+        )
         return {
             "format": FORMAT_NAME,
             "version": FORMAT_VERSION,

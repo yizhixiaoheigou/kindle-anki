@@ -72,7 +72,7 @@ class KindleImportUiTests(unittest.TestCase):
         self.assertIn("5 张全部跳过", text)
         self.assertIn("背面为空 4，正面为空 1", text)
         self.assertTrue(text.endswith(SKIP_HINTS["empty_back"]))
-        self.assertIn("0 张全部跳过", no_cards_text({}))
+        self.assertEqual(no_cards_text({}), COPY["no_cards_empty"])
 
     def test_skip_copy_matches_the_browser_page(self) -> None:
         app_js = (ROOT / "plugin" / "kindleanki.koplugin" / "web" / "app.js").read_text(encoding="utf-8")

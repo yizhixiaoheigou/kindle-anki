@@ -165,6 +165,46 @@
     function extractTextParts(value) {
         var parts = [];
         var index = 0;
+        // Open lists as [ordered, items so far], and cells in the current row.
+        var lists = [];
+        var cells = 0;
+        // A table row stays on one line with " | " between cells; list items
+        // get "• " or their number. Port of _TextExtractor._open/handle_endtag.
+        function open(tag) {
+            if (tag === "td" || tag === "th") {
+                // The row (or the table) already started a line.
+                parts.push(cells ? " | " : "");
+                cells += 1;
+            } else if (tag === "tr") {
+                cells = 0;
+                parts.push("\n");
+            } else if (tag === "ul" || tag === "ol") {
+                lists.push([tag === "ol", 0]);
+                parts.push("\n");
+            } else if (tag === "li") {
+                var marker = "• ";
+                if (lists.length) {
+                    lists[lists.length - 1][1] += 1;
+                    if (lists[lists.length - 1][0]) {
+                        marker = lists[lists.length - 1][1] + ". ";
+                    }
+                }
+                parts.push("\n" + marker);
+            } else if (tag === "br" || BLOCK_TAGS[tag]) {
+                parts.push("\n");
+            }
+        }
+        function close(tag) {
+            if (tag === "td" || tag === "th" || tag === "tr" || tag === "li") {
+                return;
+            }
+            if ((tag === "ul" || tag === "ol") && lists.length) {
+                lists.pop();
+            }
+            if (BLOCK_TAGS[tag]) {
+                parts.push("\n");
+            }
+        }
         while (index < value.length) {
             var next = value.indexOf("<", index);
             if (next < 0) {
@@ -192,9 +232,10 @@
             }
             var tag = name[1].toLowerCase();
             var end = tagEnd(value, next);
-            var selfClosing = end[1];
-            if (tag === "br" || BLOCK_TAGS[tag]) {
-                parts.push("\n");
+            if (value.charAt(next + 1) === "/") {
+                close(tag);
+            } else {
+                open(tag);
             }
             index = end[0];
         }
@@ -224,8 +265,12 @@
     var MEDIA_SHORTCODE_TEST = /\[(?:sound|ankiimage):[^\]]*\]?/i;
     var IMAGE_SRC = /<\s*img\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/gi;
     var IMAGE_SHORTCODE = /\[ankiimage:([^\]]+)\]/gi;
+    var IMAGE_SRC_TEST = /<\s*img\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i;
+    var IMAGE_SHORTCODE_TEST = /\[ankiimage:([^\]]+)\]/i;
     var EMBEDDED_OPTION = /^\s*([A-Z])\s*[\.．、:：]\s*(.+?)\s*$/gm;
-    var ANSWER_LABELS = /^\s*([A-Z](?:\s*[,，、/]\s*[A-Z])*)\s*[\.．、:：]?\s*(?:\s|$)/;
+    // Answer labels at the start of the back ("A", "A、C", "B. ..."), but not
+    // an English sentence that starts with "A" ("A good plan").
+    var ANSWER_LABELS = /^\s*([A-Z](?:\s*[,，、/]\s*[A-Z])*)(?!\s+[a-z])\s*[\.．、:：]?\s*(?:\s|$)/;
     // One cloze deletion with no nested "{{" or "}}" inside, so repeated
     // passes resolve nested clozes from the innermost out.
     var CLOZE = /\{\{c(\d+)::((?:(?!\{\{|\}\})[\s\S])*?)(?:::((?:(?!\{\{|\}\})[\s\S])*?))?\}\}/g;
@@ -340,7 +385,8 @@
     }
 
     // Back field for an unrecognised note type: a field named like an
-    // answer, else the first later field with text in the first note.
+    // answer, else the first later field with text or an image in the first
+    // note.
     function suggestBack(names, sample) {
         if (names.length < 2) {
             return [];
@@ -356,15 +402,54 @@
             }
         }
         for (var index = 1; index < names.length; index++) {
-            if (clean(extractField(sample, index))) {
+            var value = extractField(sample, index);
+            if (clean(value) || IMAGE_SRC_TEST.test(value) || IMAGE_SHORTCODE_TEST.test(value)) {
                 return [index];
             }
         }
         return [names.length - 1];
     }
 
+    // Per template ord: the fields its question side shows, and the field its
+    // {{type:Field}} box checks. Port of _template_refs.
+    function templateRefs(model, indexes) {
+        var result = {};
+        var templates = Array.isArray(model.tmpls) ? model.tmpls : [];
+        templates.forEach(function (template, position) {
+            if (template === null || typeof template !== "object" || Array.isArray(template)) {
+                return;
+            }
+            var templateOrd = Number.isInteger(template.ord) ? template.ord : position;
+            var shown = [];
+            var typed = null;
+            var pattern = /\{\{([^{}]+)\}\}/g;
+            var qfmt = String(template.qfmt || "");
+            var match;
+            while ((match = pattern.exec(qfmt)) !== null) {
+                var ref = match[1].trim();
+                if (!ref || "#^/!".indexOf(ref.charAt(0)) >= 0) {
+                    continue;
+                }
+                var parts = ref.split(":").map(function (part) { return part.trim(); });
+                var key = nameKey(parts[parts.length - 1]);
+                if (!(key in indexes)) {
+                    continue;
+                }
+                if (shown.indexOf(indexes[key]) < 0) {
+                    shown.push(indexes[key]);
+                }
+                var lowered = parts.map(function (part) { return part.toLowerCase(); });
+                if (lowered[0] === "type" && lowered.indexOf("cloze") < 0) {
+                    typed = indexes[key];
+                }
+            }
+            result[templateOrd] = { shown: shown, typed: typed };
+        });
+        return result;
+    }
+
     function isClozeModel(model) {
-        return model.type === 1;
+        return typeof model.type === "number" && model.type === 1;
     }
 
     // Fields the cloze template reads ({{cloze:Text}}), in field order.
@@ -431,7 +516,7 @@
             answers = answers.concat(hidden[1]);
         });
         if (!answers.length) {
-            return "empty_front";
+            return "cloze_not_found";
         }
         if (answers.some(function (answer) {
             return decodeEntities(answer).trim().indexOf(IMAGE_OCCLUSION) === 0;
@@ -638,6 +723,18 @@
                     }
                 }
             }
+            if (detected && detected.kind === "short_answer") {
+                var refs = templateRefs(model, indexes);
+                var frontSet = detected.frontIndexes;
+                var backSet = detected.backIndexes;
+                detected.reverseOrds = Object.keys(refs).map(Number).filter(function (templateOrd) {
+                    var shownFields = refs[templateOrd].shown;
+                    return templateOrd !== 0
+                        && shownFields.some(function (index) { return backSet.indexOf(index) >= 0; })
+                        && !shownFields.some(function (index) { return frontSet.indexOf(index) >= 0; });
+                }).sort(function (a, b) { return a - b; });
+                detected.typeAnswerIndex = refs[0] ? refs[0].typed : null;
+            }
             if (detected) {
                 supported[modelId] = detected;
             } else if (reason) {
@@ -772,24 +869,55 @@
                 taken[candidate] = true;
                 return candidate;
             });
+            // Sizes stay unknown here: decompressing every file (audio too)
+            // at once runs a phone's browser out of memory on large decks.
+            // fillImageSizes reads only the images cards use, one at a time.
             var catalog = {};
-            var reads = [];
             for (var i = 0; i < present.length; i++) {
-                (function (index) {
-                    reads.push(self.zip.read(present[index][0]).then(function (data) {
-                        var dimensions = sniffDimensions(data);
-                        catalog[present[index][1]] = {
-                            archiveName: present[index][0],
-                            name: finalNames[index],
-                            width: dimensions.width,
-                            height: dimensions.height,
-                        };
-                    }).catch(function () { }));
-                })(i);
+                catalog[present[i][1]] = {
+                    archiveName: present[i][0],
+                    name: finalNames[i],
+                    width: null,
+                    height: null,
+                };
             }
-            return Promise.all(reads).then(function () { return catalog; });
+            return catalog;
         });
     };
+
+    // Set width/height on every image reference in cards, reading each
+    // referenced file once and in turn so only one is in memory at a time.
+    function fillImageSizes(archive, catalog, cards) {
+        var refsByName = {};
+        cards.forEach(function (card) {
+            ["front_images", "back_images"].forEach(function (field) {
+                (card[field] || []).forEach(function (ref) {
+                    (refsByName[ref.name] = refsByName[ref.name] || []).push(ref);
+                });
+            });
+        });
+        var archiveNames = {};
+        Object.keys(catalog).forEach(function (sourceName) {
+            archiveNames[catalog[sourceName].name] = catalog[sourceName].archiveName;
+        });
+        return Object.keys(refsByName).sort().reduce(function (previous, name) {
+            return previous.then(function () {
+                return archive.zip.read(archiveNames[name]).then(sniffDimensions, function () {
+                    return sniffDimensions(new Uint8Array(0));
+                }).then(function (dimensions) {
+                    refsByName[name].forEach(function (ref) {
+                        ref.width = dimensions.width;
+                        ref.height = dimensions.height;
+                    });
+                });
+            });
+        }, Promise.resolve());
+    }
+
+    function catalogAsset(catalog, sourceName) {
+        var base = sourceName.split("/").pop().split("\\").pop();
+        return catalog[sourceName] || catalog[base];
+    }
 
     function imageRefs(value, catalog) {
         var names = [];
@@ -806,15 +934,23 @@
         var seen = {};
         for (var i = 0; i < names.length; i++) {
             var sourceName = decodeEntities(names[i]).trim();
-            var base = sourceName.split("/").pop().split("\\").pop();
-            var asset = catalog[sourceName] || catalog[base];
+            var asset = catalogAsset(catalog, sourceName);
+            if (!asset) {
+                // Anki's editor stores names with spaces or CJK URL-encoded.
+                try {
+                    asset = catalogAsset(catalog, decodeURIComponent(sourceName));
+                } catch (malformed) {
+                    asset = null;
+                }
+            }
             if (!asset || asset.name in seen) {
                 continue;
             }
             seen[asset.name] = true;
             result.push({ name: asset.name, width: asset.width, height: asset.height });
         }
-        return result;
+        // A pack allows this many images per side; more would fail the whole pack.
+        return result.slice(0, MAX_IMAGES_PER_CARD);
     }
 
     // ------------------------------------------------------------------
@@ -851,13 +987,25 @@
         if (tokenMatches.length && tokenMatches.length === tokens.length) {
             return sortedUnique(tokenMatches);
         }
+        var normalized = value.replace(/\s+/g, "").toLowerCase();
+        for (var n = 0; n < options.length; n++) {
+            if (normalized === options[n].replace(/\s+/g, "").toLowerCase()) {
+                return [n];
+            }
+        }
 
-        var found = [];
+        // Run-together labels ("ACD") only when short and every letter is an
+        // option, so a word such as "MITOCHONDRIA" is not read as labels.
         var condensed = upper.replace(/ /g, "");
+        var runTogether = /^[A-Z]+$/.test(condensed) && condensed.length <= options.length &&
+            condensed.split("").every(function (letter) {
+                return letter.charCodeAt(0) - 65 < options.length;
+            });
+        var found = [];
         for (var i = 0; i < options.length; i++) {
             var letter = String.fromCharCode(65 + i);
             var bounded = new RegExp("(?:^|[^A-Z])" + letter + "(?:$|[^A-Z])").test(upper);
-            if (bounded || (/^[A-Z]+$/.test(condensed) && condensed.indexOf(letter) >= 0)) {
+            if (bounded || (runTogether && condensed.indexOf(letter) >= 0)) {
                 found.push(i);
             }
         }
@@ -873,12 +1021,6 @@
             })) {
             return sortedUnique(numbers.map(function (number) { return parseInt(number, 10) - 1; }));
         }
-        var normalized = value.replace(/\s+/g, "").toLowerCase();
-        for (var n = 0; n < options.length; n++) {
-            if (normalized === options[n].replace(/\s+/g, "").toLowerCase()) {
-                return [n];
-            }
-        }
         return [];
     }
 
@@ -886,10 +1028,14 @@
         return Array.from(new Set(values)).sort(function (a, b) { return a - b; });
     }
 
-    function packedOptions(raw) {
+    function packedOptionParts(raw) {
         var text = String(raw == null ? "" : raw).replace(/<br\s*\/?>/gi, "\n");
-        var parts = text.split(/\|\|/).map(function (part) { return part.trim(); })
+        return text.split(/\|\|/).map(function (part) { return part.trim(); })
             .filter(Boolean);
+    }
+
+    function packedOptions(raw) {
+        var parts = packedOptionParts(raw);
         var options = [];
         for (var i = 0; i < parts.length; i++) {
             var item = clean(parts[i]);
@@ -897,6 +1043,35 @@
                 options.push(item);
             }
         }
+        return options;
+    }
+
+    // Option texts; an option's images join the question's images and the
+    // option says which ones ("（见图）（图2）"), so an image-only option keeps
+    // its place. Port of _options_with_images.
+    function optionsWithImages(rawOptions, frontImages, catalog) {
+        var options = [];
+        rawOptions.forEach(function (raw) {
+            var text = clean(raw) || "";
+            var numbers = [];
+            imageRefs(raw, catalog).forEach(function (image) {
+                var names = frontImages.map(function (item) { return item.name; });
+                if (names.indexOf(image.name) < 0) {
+                    if (frontImages.length >= MAX_IMAGES_PER_CARD) {
+                        return;
+                    }
+                    frontImages.push(image);
+                    names.push(image.name);
+                }
+                numbers.push(String(names.indexOf(image.name) + 1));
+            });
+            if (numbers.length) {
+                text = (text ? text + " " : "") + "（图" + numbers.join("、") + "）";
+            }
+            if (text) {
+                options.push(text);
+            }
+        });
         return options;
     }
 
@@ -910,7 +1085,44 @@
         }).join("、");
     }
 
+    var OPTION_LINE_START = /^\s*([A-Z])\s*[\.．、:：]/;
+
+    // Put options written on one line ("A. 30% B. 20% C. 40%") on lines of
+    // their own. Only the next letter in order splits a line, and only after
+    // a space and not before a letter, so "采用 B.O.T 模式" stays whole.
+    // Port of _split_inline_options.
+    function splitInlineOptions(text) {
+        var lines = [];
+        var expected = null;
+        text.split("\n").forEach(function (line) {
+            var start = OPTION_LINE_START.exec(line);
+            if (!start || (start[1] !== "A" && start[1] !== expected)) {
+                lines.push(line);
+                expected = null;
+                return;
+            }
+            var label = start[1];
+            while (label < "Z") {
+                var following = String.fromCharCode(label.charCodeAt(0) + 1);
+                var split = new RegExp("\\s" + following + "\\s*[\\.．、:：](?![A-Za-z.])")
+                    .exec(line.slice(start[0].length));
+                if (!split) {
+                    break;
+                }
+                var cut = start[0].length + split.index;
+                lines.push(line.slice(0, cut));
+                line = line.slice(cut).replace(/^\s+/, "");
+                start = OPTION_LINE_START.exec(line);
+                label = following;
+            }
+            lines.push(line);
+            expected = String.fromCharCode(label.charCodeAt(0) + 1);
+        });
+        return lines.join("\n");
+    }
+
     function embeddedChoice(front, back) {
+        front = splitInlineOptions(front);
         var matches = [];
         var match;
         EMBEDDED_OPTION.lastIndex = 0;
@@ -1093,30 +1305,90 @@
                 });
             }
             var ranked = Object.keys(deckNames).sort(function (a, b) {
-                return (cardDecks[b] || 0) - (cardDecks[a] || 0) || (deckNames[a] < deckNames[b] ? -1 : deckNames[a] > deckNames[b] ? 1 : 0);
+                return (cardDecks[b] || 0) - (cardDecks[a] || 0) || compareText(deckNames[a], deckNames[b]);
+            });
+            var titleDecks = Object.keys(deckNames).filter(function (deckId) {
+                return (cardDecks[deckId] || 0) > 0;
+            }).map(function (deckId) {
+                return [deckNames[deckId], cardDecks[deckId], Number(deckId)];
             });
             var stem = self.archive.fileName.replace(/\.[^.]*$/, "");
             return {
                 title: stem,
                 file_name: self.archive.fileName,
                 deck_names: ranked.map(function (deckId) { return deckNames[deckId]; }),
-                suggested_title: ranked.length && Object.keys(cardDecks).length ? deckNames[ranked[0]] : "",
+                suggested_title: titleForDecks(titleDecks),
                 models: models,
-                unsupported_models: unsupported.slice().sort(),
+                unsupported_models: unsupported.slice().sort(compareText),
             };
         });
     };
 
-    function primaryDeckTitle(deckNames, deckCards) {
-        var ids = Array.from(deckNames.keys());
-        if (!ids.length) {
+    // Compare by code point, as Python does, so both converters order names
+    // with emoji or other astral characters the same way.
+    function compareText(a, b) {
+        var x = Array.from(a);
+        var y = Array.from(b);
+        for (var i = 0; i < x.length && i < y.length; i++) {
+            var diff = x[i].codePointAt(0) - y[i].codePointAt(0);
+            if (diff) {
+                return diff < 0 ? -1 : 1;
+            }
+        }
+        return x.length < y.length ? -1 : x.length > y.length ? 1 : 0;
+    }
+
+    function compareDigits(a, b) {
+        a = a.replace(/^0+/, "");
+        b = b.replace(/^0+/, "");
+        return a.length !== b.length ? (a.length < b.length ? -1 : 1) : compareText(a, b);
+    }
+
+    // Orders "第2章" before "第10章"; port of _natural_key.
+    function compareNatural(a, b) {
+        var x = a.split(/([0-9]+)/).filter(Boolean);
+        var y = b.split(/([0-9]+)/).filter(Boolean);
+        for (var i = 0; i < x.length && i < y.length; i++) {
+            var xDigits = /^[0-9]/.test(x[i]);
+            var yDigits = /^[0-9]/.test(y[i]);
+            var diff = xDigits !== yDigits ? (xDigits ? -1 : 1)
+                : xDigits ? compareDigits(x[i], y[i]) : compareText(x[i], y[i]);
+            if (diff) {
+                return diff;
+            }
+        }
+        return x.length < y.length ? -1 : x.length > y.length ? 1 : 0;
+    }
+
+    function compareDecks(nameA, idA, nameB, idB) {
+        return compareNatural(nameA, nameB) || compareText(nameA, nameB) || idA - idB;
+    }
+
+    // Pack title from [name, card count, id] of the decks that hold cards;
+    // port of _title_for_decks.
+    function titleForDecks(decks) {
+        if (!decks.length) {
             return "";
         }
-        ids.sort(function (a, b) {
-            return (deckCards.get(b) || []).length - (deckCards.get(a) || []).length
-                || (a < b ? -1 : a > b ? 1 : 0);
-        });
-        return deckNames.get(ids[0]);
+        if (decks.length > 1) {
+            var paths = decks.map(function (deck) { return deck[0].split("::"); });
+            var shortest = Math.min.apply(null, paths.map(function (parts) { return parts.length; }));
+            var common = [];
+            for (var i = 0; i < shortest; i++) {
+                var part = paths[0][i];
+                if (paths.some(function (parts) { return parts[i] !== part; })) {
+                    break;
+                }
+                common.push(part);
+            }
+            var prefix = common.join("::").trim();
+            if (prefix) {
+                return prefix;
+            }
+        }
+        return decks.slice().sort(function (a, b) {
+            return b[1] - a[1] || compareText(a[0], b[0]) || a[2] - b[2];
+        })[0][0];
     }
 
     function importFromDatabase(archive, database, options) {
@@ -1158,8 +1430,10 @@
                     continue;
                 }
                 // A cloze note's card ord is its cloze number minus one, not
-                // a second template.
-                if (model.kind !== "cloze" && (row.cardOrd || 0) !== 0) {
+                // a second template; a reverse template swaps front and back.
+                var cardOrd = row.cardOrd || 0;
+                var reverse = model.kind === "short_answer" && (model.reverseOrds || []).indexOf(cardOrd) >= 0;
+                if (model.kind !== "cloze" && cardOrd !== 0 && !reverse) {
                     bump("non_primary_template");
                     continue;
                 }
@@ -1172,7 +1446,7 @@
                 var cardHasMedia = false;
                 var frontImages, backImages, front, back, cardFields;
                 if (model.kind === "cloze") {
-                    var rendered = clozeCard(fields, model, (row.cardOrd || 0) + 1);
+                    var rendered = clozeCard(fields, model, cardOrd + 1);
                     if (typeof rendered === "string") {
                         bump(rendered);
                         continue;
@@ -1199,18 +1473,11 @@
                     frontImages = imageRefs(rawQuestion, mediaCatalog);
                     backImages = imageRefs(rawBack, mediaCatalog);
                     front = joinedText(fields, model.frontIndexes);
-                    var options;
-                    if (model.packedOptionsIndex !== null) {
-                        options = packedOptions(field(fields, model.packedOptionsIndex));
-                    } else {
-                        options = [];
-                        for (var oi = 0; oi < model.optionIndexes.length; oi++) {
-                            var option = clean(extractField(fields, model.optionIndexes[oi]));
-                            if (option) {
-                                options.push(option);
-                            }
-                        }
-                    }
+                    var rawOptions = model.packedOptionsIndex !== null
+                        ? packedOptionParts(field(fields, model.packedOptionsIndex))
+                        : model.optionIndexes.map(function (index) { return extractField(fields, index); });
+                    cardHasMedia = cardHasMedia || rawOptions.some(hasMedia);
+                    var options = optionsWithImages(rawOptions, frontImages, mediaCatalog);
                     var correctRaw = field(fields, model.correctIndex);
                     var correct = correctIndices(correctRaw, options);
                     var backParts = [];
@@ -1248,13 +1515,15 @@
                         options: options, correct_indices: correct,
                     };
                 } else {
-                    var rawFront = joinedRaw(fields, model.frontIndexes);
-                    var rawBack = joinedRaw(fields, model.backIndexes);
+                    var frontIndexes = reverse ? model.backIndexes : model.frontIndexes;
+                    var backIndexes = reverse ? model.frontIndexes : model.backIndexes;
+                    var rawFront = joinedRaw(fields, frontIndexes);
+                    var rawBack = joinedRaw(fields, backIndexes);
                     cardHasMedia = hasMedia(rawFront) || hasMedia(rawBack);
                     frontImages = imageRefs(rawFront, mediaCatalog);
                     backImages = imageRefs(rawBack, mediaCatalog);
-                    front = joinedText(fields, model.frontIndexes);
-                    back = joinedText(fields, model.backIndexes);
+                    front = joinedText(fields, frontIndexes);
+                    back = joinedText(fields, backIndexes);
                     // A side may be only images; it still needs one or the other.
                     if (!front && !frontImages.length) {
                         bump("empty_front");
@@ -1274,6 +1543,11 @@
                         };
                     } else {
                         cardFields = { type: "short_answer", front: front, back: back };
+                        var typed = !reverse && model.typeAnswerIndex != null
+                            ? clean(field(fields, model.typeAnswerIndex)) : null;
+                        if (typed) {
+                            cardFields.expected_answers = [typed];
+                        }
                     }
                 }
 
@@ -1334,21 +1608,21 @@
                 error.report = {
                     total_cards: rows.length,
                     skipped_reasons: skippedReasons,
-                    unsupported_models: unsupported.slice().sort(),
+                    unsupported_models: unsupported.slice().sort(compareText),
                 };
                 throw error;
             }
             var orderedDecks = Array.from(deckNames.keys()).sort(function (a, b) {
-                var nameA = deckNames.get(a);
-                var nameB = deckNames.get(b);
-                return nameA < nameB ? -1 : nameA > nameB ? 1 : a - b;
+                return compareDecks(deckNames.get(a), a, deckNames.get(b), b);
             }).map(function (deckId) {
                 return { id: deckId, name: deckNames.get(deckId), card_ids: deckCards.get(deckId) };
             });
             var packTitle = (title || "").trim()
-                || primaryDeckTitle(deckNames, deckCards)
+                || titleForDecks(Array.from(deckNames.keys()).map(function (deckId) {
+                    return [deckNames.get(deckId), deckCards.get(deckId).length, deckId];
+                }))
                 || archive.fileName.replace(/\.[^.]*$/, "");
-            return {
+            var pack = {
                 format: FORMAT_NAME,
                 version: FORMAT_VERSION,
                 title: packTitle,
@@ -1361,13 +1635,14 @@
                     imported_cards: cards.length,
                     skipped_cards: skippedKeys.reduce(function (sum, key) { return sum + skipped[key]; }, 0),
                     skipped_reasons: skippedReasons,
-                    unsupported_models: unsupported.slice().sort(),
+                    unsupported_models: unsupported.slice().sort(compareText),
                     scheduling: "reset_to_new",
                     html_conversion: "plain_text",
                     media_cards: mediaCards,
                     media_files: Object.keys(mediaFiles).length,
                 },
             };
+            return fillImageSizes(archive, mediaCatalog, cards).then(function () { return pack; });
         });
     }
 

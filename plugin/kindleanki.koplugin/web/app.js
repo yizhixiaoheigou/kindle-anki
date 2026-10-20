@@ -41,7 +41,13 @@
         status.setAttribute("data-state", kind);
         status.textContent = message;
     }
+    // Same wording as new_format_* in tools/kindle_import_ui.py.
+    var NEW_FORMAT_TEXT = "这个 .apkg 是新版 Anki 格式，转换器读不了。在 Anki 里重新导出：" +
+        "选中牌组 → 导出 → 格式选 .apkg → 勾选「支持旧版本 Anki」" +
+        "（Support older Anki versions）→ 导出，再选新导出的文件。";
+
     function errorText(err) {
+        if (err && err.code === "new_format_export") return NEW_FORMAT_TEXT;
         if (err && err.report) return noCardsText(err.report);
         return (err && err.message) || String(err);
     }
@@ -283,6 +289,9 @@
         state.pack = null;
         state.bundle = null;
         state.bundleStale = true;
+        // Forget the previous file now, so a failed read cannot leave its
+        // note types behind for the convert button.
+        state.inspect = null;
         state.fields = [];
         $("pack-title-input").value = "";
         $("mapping").hidden = true;
@@ -308,10 +317,7 @@
             }).catch(function (err) {
                 $("file-name").textContent = "读不了这个文件。点这里换一个";
                 if (err && err.code === "new_format_export") {
-                    // Same wording as new_format_* in tools/kindle_import_ui.py.
-                    setError("这个 .apkg 是新版 Anki 格式，转换器读不了。在 Anki 里重新导出：" +
-                        "选中牌组 → 导出 → 格式选 .apkg → 勾选「支持旧版本 Anki」" +
-                        "（Support older Anki versions）→ 导出，再选新导出的文件。");
+                    setError(NEW_FORMAT_TEXT);
                 } else {
                     setError("读不了这个 .apkg：" + errorText(err) + "。导出时记得勾选「支持旧版本 Anki」。");
                 }
@@ -389,11 +395,17 @@
         }).filter(Boolean).join("\n");
     }
 
-    // A cloze note previews as its first card: c1 hidden on the front and
-    // revealed on the back, above Back Extra.
+    // A cloze note previews as its first card: the lowest cloze number in the
+    // note hidden on the front and revealed on the back, above Back Extra.
     function clozeSides(model, fields) {
-        function hide(raw) { return C.renderCloze(raw, 1, false)[0]; }
-        function reveal(raw) { return C.renderCloze(raw, 1, true)[0]; }
+        var numbers = fields.front.map(function (fieldIndex) {
+            return String((model.sample && model.sample[fieldIndex]) || "");
+        }).join("").match(/\{\{c\d+::/g) || [];
+        var number = numbers.length ? Math.min.apply(null, numbers.map(function (found) {
+            return parseInt(found.slice(3), 10);
+        })) : 1;
+        function hide(raw) { return C.renderCloze(raw, number, false)[0]; }
+        function reveal(raw) { return C.renderCloze(raw, number, true)[0]; }
         if (sideText(model, fields.front, reveal).indexOf("[image-occlusion:") >= 0) {
             return { front: "Anki 的图片遮挡卡暂不支持，转换时会跳过。", back: "—" };
         }
@@ -420,7 +432,7 @@
                 : { front: sideText(model, fields.front), back: sideText(model, fields.back) };
             var front = sides.front;
             var back = sides.back;
-            var hasBack = fields.back.length > 0 || (cloze && fields.front.length > 0);
+            var hasBack = fields.back.length > 0;
             var emptyField = "（这个字段在第一条笔记里是空的）";
             $("screen-" + index).innerHTML =
                 "<div class='bar'><span>" + esc(title) + "</span><span>1 / 1</span></div>" +
@@ -460,9 +472,10 @@
         return mapping;
     }
 
-    // A cloze card's back is its revealed text, so Back Extra is optional.
+    // Every note type needs a back field, cloze too: there it is Back Extra,
+    // which would otherwise be dropped without anyone noticing.
     function fieldsComplete(model, fields) {
-        return fields.front.length > 0 && (fields.back.length > 0 || model.kind === "cloze");
+        return !!fields && fields.front.length > 0 && fields.back.length > 0;
     }
 
     function incompleteModel() {
@@ -490,6 +503,7 @@
             not_enough_options: "选项不足",
             unreadable_correct_answer: "无法识别答案",
             image_occlusion: "图片遮挡卡",
+            cloze_not_found: "填空编号对不上",
         };
         return Object.keys(reasons).map(function (key) {
             return (names[key] || key) + " " + reasons[key];
@@ -507,9 +521,11 @@
         not_enough_options: "选择题读不出两个以上选项。检查选项字段。",
         unreadable_correct_answer: "选择题的答案读不出来。检查答案字段。",
         image_occlusion: "Anki 的图片遮挡卡暂不支持。",
+        cloze_not_found: "这些卡的填空编号在正面字段里找不到，可能是填空写法有误或 Anki 留下的空卡。在 Anki 里用「工具 → 检查空卡片」清理后重新导出。",
     };
 
     function noCardsText(report) {
+        if (!report.total_cards) return "这个 .apkg 里没有卡片。在 Anki 里选中有卡片的牌组再导出。";
         var reasons = report.skipped_reasons || {};
         var top = null;
         Object.keys(reasons).forEach(function (key) {
@@ -529,7 +545,9 @@
     // Resolves to the bundle for the current mapping, converting only when
     // the mapping or title changed since the last conversion.
     function convert() {
-        if (!state.bytes) return Promise.reject(new Error("先在第 1 步选择 .apkg 文件。"));
+        if (!state.bytes || !state.inspect) {
+            return Promise.reject(new Error("先在第 1 步选一个能读取的 .apkg 文件。"));
+        }
         var missing = incompleteModel();
         if (missing) {
             state.fields.forEach(function (fields, index) {

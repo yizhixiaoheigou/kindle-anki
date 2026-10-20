@@ -84,10 +84,13 @@ def _cloze_model(model_id: int, name: str, fields: list[str], qfmt: str) -> dict
 
 
 def _write_collection(path: Path, models: dict, notes: list[tuple], cards: list[tuple],
-                      media: dict[str, bytes] | None = None) -> None:
-    """cards are (id, note_id, ord); everything sits in one deck."""
+                      media: dict[str, bytes] | None = None,
+                      decks: dict[int, str] | None = None) -> None:
+    """cards are (id, note_id, ord) in the one "Shapes" deck, or
+    (id, note_id, ord, deck_id) with ``decks`` naming each deck."""
 
     deck_id = 1_700_000_000_005
+    deck_table = {str(key): {"id": key, "name": name} for key, name in (decks or {deck_id: "Shapes"}).items()}
     with tempfile.TemporaryDirectory(prefix="kindle-anki-fixture-") as temp:
         db_path = Path(temp) / "collection.anki2"
         connection = sqlite3.connect(db_path)
@@ -100,12 +103,12 @@ def _write_collection(path: Path, models: dict, notes: list[tuple], cards: list[
         )
         connection.execute(
             "INSERT INTO col (id, models, decks) VALUES (1, ?, ?)",
-            (json.dumps(models), json.dumps({str(deck_id): {"id": deck_id, "name": "Shapes"}})),
+            (json.dumps(models), json.dumps(deck_table)),
         )
         connection.executemany("INSERT INTO notes (id, mid, tags, flds) VALUES (?, ?, '', ?)", notes)
         connection.executemany(
             "INSERT INTO cards (id, nid, did, ord) VALUES (?, ?, ?, ?)",
-            [(card_id, note_id, deck_id, ord_) for card_id, note_id, ord_ in cards],
+            [(card[0], card[1], card[3] if len(card) > 3 else deck_id, card[2]) for card in cards],
         )
         connection.commit()
         connection.close()
@@ -142,6 +145,56 @@ def _make_shapes_apkg(path: Path) -> None:
              (204, 102, 0), (205, 103, 0), (206, 104, 0), (207, 105, 0)]
     media = {"q.png": b"q-image", "a.png": b"a-image", "io.png": b"io-image", "w.mp3": b"audio"}
     _write_collection(path, models, notes, cards, media)
+
+
+def _png(width: int, height: int) -> bytes:
+    return (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + width.to_bytes(4, "big")
+            + height.to_bytes(4, "big") + b"\x08\x02\x00\x00\x00")
+
+
+def _make_quirks_apkg(path: Path) -> None:
+    """Real-deck quirks: chapter subdecks, option images, text answers,
+    URL-encoded image names, reverse and type-in templates, options on one
+    line, tables, too many images, and a cloze with no matching number."""
+
+    reversed_model = _model(3, "Basic (and reversed card)", ["Front", "Back"])
+    reversed_model["tmpls"] = [
+        {"name": "Card 1", "ord": 0, "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+        {"name": "Card 2", "ord": 1, "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+    ]
+    typed_model = _model(4, "Basic (type in the answer)", ["Front", "Back"])
+    typed_model["tmpls"] = [
+        {"name": "Card 1", "ord": 0, "qfmt": "{{Front}}\n\n{{type:Back}}", "afmt": "{{Back}}"},
+    ]
+    models = {
+        "1": _model(1, "Single Choice", ["Question", "Option A", "Option B", "Option C", "Answer"]),
+        "2": _model(2, "Basic", ["Front", "Back"]),
+        "3": reversed_model,
+        "4": typed_model,
+        "5": _cloze_model(5, "Cloze", ["Text", "Back Extra"], "{{cloze:Text}}"),
+    }
+    many = "".join(f'<img src="p{index}.png">' for index in range(9))
+    notes = [
+        (100, 1, '看图选择<img src="q.png">\x1f（见图）<img src="a.png">\x1f<img src="b.png">'
+                 '\x1f（见图）<img src="q.png">\x1fB'),
+        (101, 1, "Cell part?\x1fThe mitochondria\x1fRibosome\x1fNucleus\x1fThe mitochondria"),
+        (102, 2, "Rate it\nA: excellent\nB: good\x1fa grade scale"),
+        (103, 2, '<img src="my%20pic.png">\x1fa picture'),
+        (104, 3, "chien\x1fdog"),
+        (105, 4, "capital of France\x1fParis"),
+        (106, 2, "资本金比例是（）。<br>A. 30% B. 20%<br>C. 40% D. 50%\x1fB"),
+        (107, 2, "<table><tr><th>合同</th><th>金额</th></tr><tr><td>A</td><td>100</td></tr></table>"
+                 "\x1f<ol><li>一</li><li>二</li></ol>"),
+        (108, 2, many + "\x1f九张图"),
+        (109, 5, "only {{c2::two}}\x1f"),
+    ]
+    decks = {1: "高项::10 收尾", 2: "高项::2 中段", 3: "高项::01 开篇"}
+    cards = [(200, 100, 0, 3), (201, 101, 0, 3), (202, 102, 0, 2), (203, 103, 0, 2),
+             (204, 104, 0, 1), (205, 104, 1, 1), (206, 105, 0, 1), (207, 106, 0, 1),
+             (208, 107, 0, 1), (209, 108, 0, 1), (210, 109, 0, 1)]
+    media = {"q.png": _png(123, 45), "a.png": b"a", "b.png": b"b", "my pic.png": _png(7, 9)}
+    media.update({f"p{index}.png": b"p" for index in range(9)})
+    _write_collection(path, models, notes, cards, media, decks)
 
 
 def _make_new_format_apkg(path: Path) -> None:
@@ -474,6 +527,48 @@ class KindlePackTests(unittest.TestCase):
         # A field named like an answer, else the first one with text, else the last.
         self.assertEqual(backs, {"红宝书": [2], "Vocab": [2], "Sounds": [1]})
         self.assertEqual([card["back"] for card in package["cards"]], ["v./n.放弃", "茂盛的"])
+
+    def test_real_deck_quirks(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-quirks-") as temp:
+            apkg = Path(temp) / "quirks.apkg"
+            _make_quirks_apkg(apkg)
+            package = import_apkg(apkg)
+            info = inspect_apkg(apkg)
+            result = write_kindle_bundle(package, apkg, Path(temp) / "out")
+            load_package(result["json"])
+        cards = {card["source_card_id"]: card for card in package["cards"]}
+        # Subdecks under one parent name the pack after the parent; chapters
+        # sort by number.
+        self.assertEqual(package["title"], "高项")
+        self.assertEqual(info["suggested_title"], "高项")
+        self.assertEqual([deck["name"] for deck in package["decks"]],
+                         ["高项::01 开篇", "高项::2 中段", "高项::10 收尾"])
+        # Option images join the question images and are numbered.
+        self.assertEqual(cards[200]["options"], ["（见图） （图2）", "（图3）", "（见图） （图1）"])
+        self.assertEqual([image["name"] for image in cards[200]["front_images"]], ["q.png", "a.png", "b.png"])
+        self.assertEqual(cards[200]["front_images"][0]["width"], 123)
+        # An answer that is an option's text is that option, not its letters.
+        self.assertEqual(cards[201]["correct_indices"], [0])
+        self.assertEqual(cards[201]["mode"], "single")
+        # A back starting with an English word is not an answer label.
+        self.assertEqual(cards[202]["type"], "short_answer")
+        # URL-encoded image names find their file.
+        self.assertEqual(cards[203]["front_images"], [{"name": "my_pic.png", "width": 7, "height": 9}])
+        # The reverse template imports with front and back swapped.
+        self.assertEqual((cards[204]["front"], cards[204]["back"]), ("chien", "dog"))
+        self.assertEqual((cards[205]["front"], cards[205]["back"]), ("dog", "chien"))
+        # {{type:Back}} becomes the expected answer.
+        self.assertEqual(cards[206]["expected_answers"], ["Paris"])
+        self.assertNotIn("expected_answers", cards[204])
+        # Options on one line become a choice card.
+        self.assertEqual(cards[207]["type"], "choice")
+        self.assertEqual(cards[207]["options"], ["30%", "20%", "40%", "50%"])
+        # Tables keep rows on lines; ordered lists keep their numbers.
+        self.assertEqual(cards[208]["front"], "合同 | 金额\nA | 100")
+        self.assertEqual(cards[208]["back"], "1. 一\n2. 二")
+        # More than 8 images on a side are cut to 8, not a failed pack.
+        self.assertEqual(len(cards[209]["front_images"]), 8)
+        self.assertEqual(package["report"]["skipped_reasons"], {"cloze_not_found": 1})
 
     def test_all_image_occlusion_reports_why(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-io-") as temp:

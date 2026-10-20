@@ -78,6 +78,7 @@ COPY = {
     "（Support older Anki versions）→ 导出，再选新导出的文件。",
     "convert_fail": "转换失败。卡包没改动。",
     "no_cards": "没有可导入的卡片：{total} 张全部跳过（{reasons}）。",
+    "no_cards_empty": "这个 .apkg 里没有卡片。在 Anki 里选中有卡片的牌组再导出。",
     "share_fail": "无法开启无线导入：{err}",
     "ip_copied": "已复制 IP。",
     "file_dialog_apkg": "选择 Anki .apkg",
@@ -258,6 +259,7 @@ SKIP_REASONS = {
     "not_enough_options": "选项不足",
     "unreadable_correct_answer": "无法识别答案",
     "image_occlusion": "图片遮挡卡",
+    "cloze_not_found": "填空编号对不上",
 }
 
 # What to change, for the reason that skipped the most cards. Keep in step
@@ -271,6 +273,8 @@ SKIP_HINTS = {
     "not_enough_options": "选择题读不出两个以上选项。检查选项字段。",
     "unreadable_correct_answer": "选择题的答案读不出来。检查答案字段。",
     "image_occlusion": "Anki 的图片遮挡卡暂不支持。",
+    "cloze_not_found": "这些卡的填空编号在正面字段里找不到，可能是填空写法有误或 Anki 留下的空卡。"
+    "在 Anki 里用「工具 → 检查空卡片」清理后重新导出。",
 }
 
 
@@ -280,6 +284,8 @@ def skip_summary(reasons: dict) -> str:
 
 def no_cards_text(report: dict) -> str:
     reasons = dict(report.get("skipped_reasons") or {})
+    if not report.get("total_cards"):
+        return COPY["no_cards_empty"]
     text = COPY["no_cards"].format(total=report.get("total_cards", 0), reasons=skip_summary(reasons))
     if reasons:
         top = max(reasons, key=lambda key: reasons[key])

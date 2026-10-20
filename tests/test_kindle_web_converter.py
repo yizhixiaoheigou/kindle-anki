@@ -29,6 +29,7 @@ from test_kindle_cards import (  # noqa: E402
     _cloze_model,
     _make_apkg,
     _make_new_format_apkg,
+    _make_quirks_apkg,
     _make_shapes_apkg,
     _make_unrecognised_apkg,
     _write_collection,
@@ -381,6 +382,18 @@ class WebConverterConformance(unittest.TestCase):
             js_error["report"]["skipped_reasons"],
             {"empty_back": 1, "image_occlusion": 1, "non_primary_template": 1},
         )
+
+    def test_real_deck_quirks_match_python(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-web-quirks-") as temp:
+            apkg = Path(temp) / "quirks.apkg"
+            _make_quirks_apkg(apkg)
+            python_package, python_zip, js_package, js_zip = _convert_both(apkg, Path(temp))
+            self.assertEqual(js_package, python_package)
+            with zipfile.ZipFile(js_zip) as js_archive, zipfile.ZipFile(python_zip) as py_archive:
+                self.assertEqual(set(js_archive.namelist()), set(py_archive.namelist()))
+            out = Path(temp) / "inspect.json"
+            _run_node(RUNNER, "--inspect", apkg, out)
+            self.assertEqual(json.loads(out.read_text(encoding="utf-8")), inspect_apkg(apkg))
 
     def test_back_suggestions_match_python(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-web-suggest-") as temp:

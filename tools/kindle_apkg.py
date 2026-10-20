@@ -82,20 +82,48 @@ class _TextExtractor(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
+        # Open lists as [ordered, items so far], and cells in the current row.
+        self.lists: list[list[int]] = []
+        self.cells = 0
+
+    def _open(self, tag: str) -> None:
+        # A table row stays on one line with " | " between cells; list items
+        # get "• " or their number.
+        if tag in ("td", "th"):
+            # The row (or the table) already started a line.
+            self.parts.append(" | " if self.cells else "")
+            self.cells += 1
+        elif tag == "tr":
+            self.cells = 0
+            self.parts.append("\n")
+        elif tag in ("ul", "ol"):
+            self.lists.append([int(tag == "ol"), 0])
+            self.parts.append("\n")
+        elif tag == "li":
+            marker = "• "
+            if self.lists:
+                self.lists[-1][1] += 1
+                if self.lists[-1][0]:
+                    marker = f"{self.lists[-1][1]}. "
+            self.parts.append("\n" + marker)
+        elif tag == "br" or tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         del attrs
-        if tag == "br" or tag in self.BLOCK_TAGS:
-            self.parts.append("\n")
+        self._open(tag)
 
     def handle_startendtag(
         self, tag: str, attrs: list[tuple[str, str | None]]
     ) -> None:
         del attrs
-        if tag == "br" or tag in self.BLOCK_TAGS:
-            self.parts.append("\n")
+        self._open(tag)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag in ("td", "th", "tr", "li"):
+            return
+        if tag in ("ul", "ol") and self.lists:
+            self.lists.pop()
         if tag in self.BLOCK_TAGS:
             self.parts.append("\n")
 
