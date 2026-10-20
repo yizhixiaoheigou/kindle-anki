@@ -4,7 +4,7 @@ knowledge-role: handoff
 # Kindle Anki — handoff
 
 The one current hand-off. Rewrite it in place; history goes to
-[PROJECT_HISTORY.md](PROJECT_HISTORY.md). Updated 2026-10-09.
+[PROJECT_HISTORY.md](PROJECT_HISTORY.md). Updated 2026-10-20.
 
 ## Where things stand
 
@@ -16,18 +16,40 @@ The one current hand-off. Rewrite it in place; history goes to
   2026-10-08; the old packs, progress, and AI settings are in
   `~/kindle-anki-backups/kindle-data-before-reset-20261008.tar` on the Mac.
   Its KOReader SSH server autostarts (key only) and remote restart is on.
+- Branch `feat/converter-skip-reasons-cloze-images` (2 commits on `main`,
+  not merged or pushed) answers a user report of "no importable cards". The
+  user's `.apkg` was a default Anki export: real cards in the zstd-compressed
+  `collection.anki21b`, plus a placeholder `collection.anki2` with one
+  "please update Anki" note. The converters now refuse such files with
+  re-export steps. The branch also adds Cloze cards, image-only sides, skip
+  reasons in the error, and better default back fields. See CHANGELOG
+  "Unreleased". The full suite passes on the Mac with
+  `KINDLE_ANKI_REQUIRE_TOOLS=1`, and the browser page was checked in
+  headless Chrome.
 
 ## Next
 
-1. When the Kindle is awake, run `scripts/kindle-deploy.sh <kindle-ip>` to
+1. Owner: review and merge the branch, push, rebuild the Windows package
+   (`packaging/README.md`) for the reporter, and deploy the plugin so the
+   browser page on the Kindle has the fix. Tell the reporter to re-export
+   with "Support older Anki versions" checked.
+2. When the Kindle is awake, run `scripts/kindle-deploy.sh <kindle-ip>` to
    bring it to `main` (it installs, verifies, and restarts KOReader). Do not
    ask for USB; use `--crash-log` for crashes.
-2. The owner is walking the first-run flows (import a pack, set up AI). Fix
+3. The owner is walking the first-run flows (import a pack, set up AI). Fix
    what they report.
-3. A friend on old KOReader needs the new plugin; confirm the plain-text cards
+4. A friend on old KOReader needs the new plugin; confirm the plain-text cards
    and the View images button there.
 
 ## Open, not scheduled
+
+- Reading new-format exports (`collection.anki21b`) directly would remove
+  the re-export step that most users hit. It needs a zstd decoder in both
+  Python (stdlib has none before 3.14) and JS, a schema-18 reader
+  (`notetypes`/`fields`/`templates`/`decks` tables with protobuf configs),
+  and the zstd media map, all kept field-identical across both converters.
+- On KOReader before v2026.07, an image-only front is a blank page with only
+  the View images button.
 
 - README's two Kindle photos show the pre-redesign screens (captioned so).
   Replacing them needs KOReader screenshots taken on the device; the owner
