@@ -63,7 +63,7 @@ packaging\build_windows.bat
 ## Release zip 布局
 
 ```bash
-./packaging/make_release_zips.sh 0.1.0
+./packaging/make_release_zips.sh 0.2.0
 ```
 
 写到 `dist/release/`。Zip A 是插件。Zip B 是 Python 退路，启动脚本的 `here` 是

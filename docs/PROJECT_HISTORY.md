@@ -93,3 +93,22 @@ and [CHANGELOG.md](../CHANGELOG.md). Single-language by design (see AGENTS.md).
 - READMEs and guides rewritten around the phone flow, with browser-page
   screenshots (`f66cd9a`). 28 commits pushed on 2026-10-09; the first CI run
   that installs Lua passed on Python 3.11–3.13 (Actions run 37877814101).
+
+## 2026-10-20 — 0.2.0: a user report, then a release review
+
+- A user's `.apkg` failed with "no importable cards". It was Anki's default
+  export: cards in the zstd `collection.anki21b`, plus a placeholder
+  `collection.anki2` the converters had been reading. Both converters now
+  refuse such files with re-export steps (`741bc41`). Reading `anki21b`
+  directly is still open (HANDOFF).
+- The same branch added Cloze cards, image-only sides, and skip reasons in
+  the all-skipped error (`d0ce50e`).
+- The release review had three readers. One sub-agent fed real and synthetic
+  decks through both converters, and one read the plugin. Command Code on
+  the Mac, running DeepSeek, reviewed the branch diff; Codex was unavailable.
+  Its findings were fixed in a plugin commit and a converter commit:
+  - plugin: ".." in pack names, unflushed progress, image-only fronts, AI
+    with images;
+  - converter: subdeck titles, option images, reverse and type-in
+    templates, one-line options, tables, answer parsing, URL-encoded image
+    names, browser memory.

@@ -2,8 +2,49 @@
 
 Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
-## Unreleased
+## 0.2.0 — 2026-10-20
 
+- Converting real decks:
+  - A deck exported with chapter subdecks takes the parent deck's name
+    ("高项合并", not "高项合并::05 信息系统工程"), and chapters sort by number
+    (第2章 before 第10章).
+  - Images inside choice options are kept: they join the question's images
+    and the option says which one ("（见图） （图2）"). An image-only option no
+    longer disappears and shifts the letters.
+  - "Basic (and reversed card)" and similar reverse templates import their
+    reverse cards with front and back swapped, instead of skipping them.
+  - Notes with a `{{type:Field}}` box fill **Type answer**'s expected answer.
+  - Options written on one line ("A. 30% B. 20% C. 40% D. 50%") become a
+    choice card.
+  - Tables keep each row on one line with " | " between cells; list items
+    keep "•" or their number.
+  - An answer that is an option's own text picks that option; a word such as
+    "The mitochondria" is no longer read as the letters A, C, D. A back that
+    starts with an English word ("A good plan…") is no longer an answer label.
+  - Image names with spaces or Chinese characters, which Anki stores
+    URL-encoded, find their files.
+  - A card side with more than 8 images keeps the first 8 instead of making
+    the whole conversion fail.
+  - The browser converter reads only the images cards use, one at a time,
+    instead of unpacking every media file at once; a 31 MB deck with 7,500
+    audio files went from about 800 MB of memory to about 200 MB.
+  - A cloze card whose number is not in the note is reported as
+    `cloze_not_found`, and an `.apkg` with no cards says so.
+- Plugin:
+  - Packs whose names contain ".." (such as "Ch 1..3" or "Words... part 2")
+    now import, upload and delete normally; real path tricks are still
+    refused.
+  - Study progress is saved when you close a card with the title-bar X, when
+    KOReader saves its settings or goes to sleep, and when the reader closes.
+  - Cards whose question is only an image show that image above the answer
+    too, including from **View images** on KOReader before v2026.07. The
+    type-answer box says the question is an image.
+  - **AI explain** skips card images it cannot send instead of failing. With
+    text-only models such as DeepSeek it retries once without images, and a
+    failure shows the provider's own error message.
+  - Asking AI no longer switches KOReader's keyboard to Pinyin for good: the
+    plugin uses Pinyin only while it is set to Chinese, then restores your
+    layout.
 - An `.apkg` exported without *Support older Anki versions* (Anki's default)
   is now refused with re-export steps in Chinese. The converters used to
   read the placeholder `collection.anki2` such exports carry and fail with
@@ -13,8 +54,8 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
   pre-ticks a back field named like an answer (解释, 释义, Answer…) or the
   first one with text, instead of the last field, which is often Audio.
 - The browser page previews a Cloze note as its first card, shows an
-  image-only field as （图片）, says image occlusion notes will be skipped,
-  and no longer asks for a back field on Cloze notes.
+  image-only field as （图片）, and says image occlusion notes will be
+  skipped.
 - The converters import Cloze notes: each cloze number becomes a card that
   hides that deletion as `[...]` (or its hint) and reveals it on the back,
   followed by Back Extra. **Type answer** checks a single-answer cloze.

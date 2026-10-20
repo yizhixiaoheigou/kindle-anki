@@ -64,7 +64,7 @@ picks it up. `desktop/Kindle-Anki-Import.bat` also finds it there.
 ## Release zip layouts
 
 ```bash
-./packaging/make_release_zips.sh 0.1.0
+./packaging/make_release_zips.sh 0.2.0
 ```
 
 Writes into `dist/release/`. Zip A is the plugin. Zip B is the Python fallback

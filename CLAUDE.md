@@ -60,4 +60,4 @@ There are three parts. They share one contract, the **pack format** (`docs/PACK_
 
    The plugin never parses `.apkg`. It only accepts finished packs.
 
-Plugin tests are mostly **static contract checks**: `test_kindle_plugin.py` asserts that specific strings and tokens appear in the Lua sources. When you rename a UI string, i18n key, or code idiom, update those assertions on purpose. Runtime Lua coverage comes from the harnesses in `tests/lua_harness/` (web server, card screens and navigation, pack validation and summaries, zip guards, study day), which stub KOReader modules and are driven by the `test_kindle_*_lua.py` files.
+Plugin tests are mostly **static contract checks**: `test_kindle_plugin.py` asserts that specific strings and tokens appear in the Lua sources. When you rename a UI string, i18n key, or code idiom, update those assertions on purpose. Runtime Lua coverage comes from the harnesses in `tests/lua_harness/` (web server, card screens and navigation, pack validation and summaries, zip guards, study day, AI requests), which stub KOReader modules and are driven by the `test_kindle_*_lua.py` files.

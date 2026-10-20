@@ -80,13 +80,16 @@ The converter never uploads your deck. It does not write API keys into the pack.
    runs inside the browser and card content stays on your device; the
    Kindle then shows "Imported …" and the pack is ready. It refuses, and
    marks the note type in red, until every note type has at least one front
-   and one back field (a Cloze note needs only the front). **只转换，下载 .zip** gives you the same pack as a file
+   and one back field. **只转换，下载 .zip** gives you the same pack as a file
    instead.
 
 What converts: Basic-style notes become short-answer cards, notes with
 option fields become choice cards, and Cloze notes become one card per cloze
 number (the hidden part shows as `[...]`, or `[hint]`, and the back shows
-it as `[answer]`). A side may be just an image. Audio is dropped, so a back
+it as `[answer]`). Reverse templates such as "Basic (and reversed card)"
+import their reverse cards too. A side may be just an image; images inside
+choice options join the question's images and the option names its image
+("（图2）"). Audio is dropped, so a back
 that is only audio is skipped, and Anki's image occlusion notes are not
 supported. If nothing in the file can be converted, the page lists why each
 card was skipped and what to change. A file exported without *Support older

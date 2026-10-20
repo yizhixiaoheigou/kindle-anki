@@ -70,8 +70,8 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "Kindle Anki Import",
             "CFBundleDisplayName": "Kindle Anki Import",
-            "CFBundleShortVersionString": "0.1.0",
-            "CFBundleVersion": "0.1.0",
+            "CFBundleShortVersionString": "0.2.0",
+            "CFBundleVersion": "0.2.0",
             "LSMinimumSystemVersion": "11.0",
             "NSHighResolutionCapable": True,
             "NSAppleEventsUsageDescription": "Open the user guide in a browser.",
