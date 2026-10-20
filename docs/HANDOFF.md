@@ -8,7 +8,7 @@ The one current hand-off. Rewrite it in place; history goes to
 
 ## Where things stand
 
-- `main` equals `origin/main` (pushed 2026-10-09). CI passed on Python
+- `origin/main` was last pushed 2026-10-09. CI passed on Python
   3.11–3.13 with Lua, luasocket, and node installed and
   `KINDLE_ANKI_REQUIRE_TOOLS=1`, so no test was skipped.
 - The maintainer's Kindle (KOReader v2026.07.1) runs `aa75187`: it lacks the DeepSeek defaults (`8232f84`) and the `#ai`
@@ -16,18 +16,21 @@ The one current hand-off. Rewrite it in place; history goes to
   2026-10-08; the old packs, progress, and AI settings are in
   `~/kindle-anki-backups/kindle-data-before-reset-20261008.tar` on the Mac.
   Its KOReader SSH server autostarts (key only) and remote restart is on.
-- Branch `feat/converter-skip-reasons-cloze-images` holds 0.2.0: the
-  user-report fixes, then the release review's plugin and converter fixes
-  (see CHANGELOG 0.2.0 and PROJECT_HISTORY). The suite passed on the Mac with
-  `KINDLE_ANKI_REQUIRE_TOOLS=1` (103 tests), and the browser page was checked
-  in headless Chrome.
+- Local `main` holds 0.2.0 (annotated tag `v0.2.0`), not pushed yet. The
+  suite passed on the Mac with `KINDLE_ANKI_REQUIRE_TOOLS=1`, and the browser
+  page was checked in headless Chrome, served and as the offline file.
+- The computer converter is now the browser page as one offline HTML file
+  (`packaging/build_standalone_html.py`). The release ships only the plugin
+  zip and that HTML; the PyInstaller `.app`/Windows builds and the Python
+  fallback zip are no longer released, so no Windows machine is needed.
 
 ## Next
 
-1. Release 0.2.0: merge to `main`, tag `v0.2.0`, push from the Mac Terminal,
-   build the release zips (`packaging/README.md`; the Windows onedir needs a
-   Windows machine), and publish the GitHub Release. Tell the reporter to
-   re-export with "Support older Anki versions" checked.
+1. Publish 0.2.0 from the Mac Terminal: `./packaging/make_release_zips.sh
+   0.2.0`, push `main` and `v0.2.0`, then `gh release create` with
+   `kindleanki.koplugin-v0.2.0.zip` and `Kindle-Anki-converter-v0.2.0.html`
+   and `RELEASE_NOTES-v0.2.0.md`. Tell the reporter to re-export with
+   "Support older Anki versions" checked.
 2. When the Kindle is awake, run `scripts/kindle-deploy.sh <kindle-ip>` to
    bring it to `main` (it installs, verifies, and restarts KOReader). Do not
    ask for USB; use `--crash-log` for crashes.
@@ -35,6 +38,12 @@ The one current hand-off. Rewrite it in place; history goes to
    what they report.
 4. A friend on old KOReader needs the new plugin; confirm the plain-text cards
    and the View images button there.
+5. Decide whether to retire the Tk app: the plugin's **Computer converter over
+   Wi-Fi** import and AI pairing (`:8766`) only work with the Python app run
+   from source now. Removing them would drop `kindle_import_app.py`,
+   `kindle_import_ui.py`, `kindle_pack_server.py`, the PyInstaller files, and
+   their tests; the Python converter itself stays as the parity reference
+   and CLI.
 
 ## Open, not scheduled
 
@@ -75,7 +84,7 @@ The one current hand-off. Rewrite it in place; history goes to
 - Audit N4: `tests/test_kindle_schedule.py` tests a Python copy of
   `schedule.lua`; replace it with a Lua harness.
 - AI HTTPS certificate verification needs a CA bundle decision.
-- The browser page and desktop converter are Chinese only; the plugin has
+- The browser page (and so the offline converter) and the Tk app are Chinese only; the plugin has
   zh_CN/en via `i18n.lua`. Offered, not requested.
 
 ## Key paths

@@ -249,6 +249,25 @@ class BrowserImportContractTests(unittest.TestCase):
         self.store = (PLUGIN / "store.lua").read_text(encoding="utf-8")
         self.i18n = (PLUGIN / "i18n.lua").read_text(encoding="utf-8")
 
+    def test_standalone_page_inlines_the_web_converter(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "build_standalone_html", ROOT / "packaging" / "build_standalone_html.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        page = module.build()
+        self.assertIn("window.KINDLE_ANKI_STANDALONE = true;", page)
+        self.assertNotRegex(page, r"<script[^>]*\ssrc=")
+        self.assertNotIn("<link", page)
+        for name in ("apkg.js", "convert.js", "app.js"):
+            self.assertIn((PLUGIN / "web" / name).read_text(encoding="utf-8"), page)
+        # Offline, the page converts and downloads only; it never calls a Kindle.
+        app = (PLUGIN / "web" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('location.protocol === "file:"', app)
+        self.assertIn("if (!STANDALONE) {", app)
+
     def test_web_assets_ship_with_the_plugin(self) -> None:
         web = PLUGIN / "web"
         for name in ("index.html", "apkg.js", "convert.js", "app.js"):

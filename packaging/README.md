@@ -28,7 +28,12 @@ Python 3.12, e.g. under `arch -x86_64` or from uv):
 python3 -m venv .venv-x86_64 && .venv-x86_64/bin/pip install -r requirements-dev.txt
 ```
 
-## macOS .app (universal2)
+## macOS .app and Windows onedir (not released)
+
+Since 0.2.0 the release ships the offline converter page instead (below).
+These builds of the Python Tk app still work for local use.
+
+### macOS .app (universal2)
 
 Unsigned. Gatekeeper: right-click → Open. Apple Silicon and Intel.
 
@@ -46,7 +51,7 @@ Output: `dist/Kindle Anki Import.app` (no Terminal window). Icons:
 `packaging/Kindle-Anki-Import.icns` and the Windows
 `packaging/Kindle-Anki-Import.ico`.
 
-## Windows onedir
+### Windows onedir
 
 On a Windows machine with Python 3 (Tcl/Tk) from python.org, copy this project
 over and run:
@@ -57,18 +62,21 @@ packaging\build_windows.bat
 
 The script creates `.venv-windows`, installs PyInstaller, and writes
 `dist\Kindle-Anki-Import\Kindle-Anki-Import.exe` (windowed, no console).
-Unsigned: SmartScreen may ask for "More info → Run anyway". Copy the
-`Kindle-Anki-Import` folder back into `dist/` here so `make_release_zips.sh`
-picks it up. `desktop/Kindle-Anki-Import.bat` also finds it there.
+Unsigned: SmartScreen may ask for "More info → Run anyway".
+`desktop/Kindle-Anki-Import.bat` finds it in `dist\Kindle-Anki-Import`.
 
-## Release zip layouts
+## Release files
 
 ```bash
 ./packaging/make_release_zips.sh 0.2.0
 ```
 
-Writes into `dist/release/`. Zip A is the plugin, its Lua files plus `web/`
-(the browser import page); the script fails if `web/` is missing. Zip B is the Python fallback
-with launchers whose `here` is the zip root. Zip C is the macOS `.app` and
-Zip D is the Windows onedir; each is added only if it exists and is newer
-than `tools/`, so an old build never ships under a new version.
+Writes into `dist/release/`:
+
+- `kindleanki.koplugin-v<version>.zip`: the plugin, its Lua files plus `web/`
+  (the browser import page). The script fails if `web/` is missing.
+- `Kindle-Anki-converter-v<version>.html`: the computer converter, built by
+  `packaging/build_standalone_html.py`. It is `web/index.html` with the three
+  scripts inlined and `KINDLE_ANKI_STANDALONE` set, so it converts and
+  downloads only, with no Kindle API calls. It works from `file://` in current
+  Chrome, Edge, Safari and Firefox (it needs `DecompressionStream`).

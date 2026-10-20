@@ -4,6 +4,14 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## 0.2.0 — 2026-10-20
 
+- The computer converter is now one offline HTML file,
+  `Kindle-Anki-converter-v0.2.0.html`: the Kindle's browser import page with
+  its scripts inlined. It opens by double-click on macOS, Windows and Linux,
+  converts in the browser and downloads the zip for USB. It replaces the
+  unsigned macOS `.app`, the Windows build and the Python fallback zip in the
+  release, so both converters now run the same code. The Python Tk app still
+  runs from source (`python3 tools/kindle_import_app.py`) and still serves
+  port 8766.
 - Converting real decks:
   - A deck exported with chapter subdecks takes the parent deck's name
     ("高项合并", not "高项合并::05 信息系统工程"), and chapters sort by number

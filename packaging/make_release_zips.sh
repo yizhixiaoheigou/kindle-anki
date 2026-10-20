@@ -1,5 +1,5 @@
 #!/bin/bash
-# Assemble plugin and converter zip layouts. Does not upload anything.
+# Assemble the plugin zip and the offline converter page. Does not upload anything.
 set -euo pipefail
 root="$(cd -- "$(dirname "$0")/.." && pwd)"
 version="${1:-$(sed -n 's/.*"CFBundleShortVersionString": *"\([^"]*\)".*/\1/p' "$root/packaging/kindleanki.spec" | head -n 1)}"
@@ -45,65 +45,17 @@ if ! unzip -Z -1 "$plugin_zip" | grep -qx 'kindleanki.koplugin/web/index.html'; 
   exit 1
 fi
 
-# A built app older than the converter sources would ship old code under
-# the new version number; leave it out and say so.
-stale_build() {
-  local built="$1"
-  if [[ -n "$(find "$root/tools" -name 'kindle_*.py' -newer "$built" -print -quit)" ]]; then
-    echo "skipping $built: older than tools/; rebuild it first" >&2
-    return 0
-  fi
-  return 1
-}
-
-conv_stage="$stage/converter"
-mkdir -p "$conv_stage/tools" "$conv_stage/docs"
-cp "$root/tools/"kindle_*.py "$conv_stage/tools/"
-cp "$root/docs/USER_GUIDE.md" "$root/docs/USER_GUIDE.zh_CN.md" "$conv_stage/docs/"
-cat > "$conv_stage/Kindle-Anki-Import.command" << 'EOF'
-#!/bin/bash
-set -euo pipefail
-here="$(cd -- "$(dirname "$0")" && pwd)"
-cd "$here"
-exec python3 "$here/tools/kindle_import_app.py"
-EOF
-chmod +x "$conv_stage/Kindle-Anki-Import.command"
-cat > "$conv_stage/Kindle-Anki-Import.bat" << 'EOF'
-@echo off
-cd /d "%~dp0"
-where py >nul 2>&1
-if %ERRORLEVEL%==0 (
-  py -3 tools\kindle_import_app.py
-  goto :eof
-)
-where python >nul 2>&1
-if %ERRORLEVEL%==0 (
-  python tools\kindle_import_app.py
-  goto :eof
-)
-echo Need Python 3. Install it from https://www.python.org/downloads/ then double-click this file again.
-pause
-EOF
-conv_zip="$out/Kindle-Anki-converter-v${version}.zip"
-rm -f "$conv_zip"
-( cd "$conv_stage" && zip -r "$conv_zip" . )
-fail_if_forbidden "$conv_zip"
-
-mac_app="$root/dist/Kindle Anki Import.app"
-if [[ -d "$mac_app" ]] && ! stale_build "$mac_app/Contents/MacOS"; then
-  mac_zip="$out/Kindle-Anki-Import-macOS-v${version}.zip"
-  rm -f "$mac_zip"
-  ( cd "$root/dist" && zip -ry "$mac_zip" "Kindle Anki Import.app" )
-  fail_if_forbidden "$mac_zip"
+# The computer converter is the same browser page as one offline HTML file;
+# the Tk app and its macOS/Windows builds are no longer released.
+html="$out/Kindle-Anki-converter-v${version}.html"
+python3 "$root/packaging/build_standalone_html.py" "$html" >/dev/null
+if grep -qE '<script[^>]*[[:space:]]src=' "$html"; then
+  echo "external script in $html" >&2
+  exit 1
 fi
-
-win_dir="$root/dist/Kindle-Anki-Import"
-if [[ -d "$win_dir" ]] && ! stale_build "$win_dir/Kindle-Anki-Import.exe"; then
-  win_zip="$out/Kindle-Anki-Import-windows-v${version}.zip"
-  rm -f "$win_zip"
-  ( cd "$root/dist" && zip -r "$win_zip" "Kindle-Anki-Import" )
-  fail_if_forbidden "$win_zip"
-fi
+rm -f "$out/Kindle-Anki-converter-v${version}.zip" \
+  "$out/Kindle-Anki-Import-macOS-v${version}.zip" \
+  "$out/Kindle-Anki-Import-windows-v${version}.zip"
 
 echo "Wrote:"
 ls -1 "$out"

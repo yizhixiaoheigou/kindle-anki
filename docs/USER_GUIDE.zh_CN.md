@@ -23,31 +23,29 @@
 
 ## 2. 在电脑上转换 Anki 卡包
 
-Mac：双击 `desktop/Kindle-Anki-Import.command`；若已打包，用
-`dist/Kindle Anki Import.app`。
+Kindle 和电脑连同一个 Wi-Fi 时可以跳过这一节：直接用电脑浏览器打开 Kindle 上的导入网页（见第 3 节）。
 
-Windows：免安装的 `Kindle-Anki-Import` onedir（若有），或
-`desktop/Kindle-Anki-Import.bat` 配 [python.org](https://www.python.org/downloads/)
-的 Python 3（带 Tcl/Tk）。
-
-窗口里：
+没有 Wi-Fi 时用离线转换器：Release 里的 `Kindle-Anki-converter-v<版本>.html`。它和 Kindle 上的
+导入网页是同一个页面，只是做成了一个文件。Mac、Windows、Linux 上双击就在浏览器里打开，
+不用安装，也不往任何地方发数据。
 
 1. 选择 Anki 的 `.apkg`，导出时要勾选「支持旧版本 Anki」。不勾的话，Anki 默认导出的是
-   转换器读不了的新格式；窗口会说明这一点，并告诉你怎么重新导出。
-2. 需要的话填**卡包名称**。默认已预填文件里解析出的牌组名；这个名字就是
-   Kindle 卡包列表里的名字，也是输出文件名。不改就沿用牌组名。
-3. 勾选正面、背面字段。打开时已经预勾：认得出的笔记类型勾它惯用的字段；其他类型的背面
-   优先勾名字像答案的字段（解释、释义、Answer、Meaning 等），没有就勾第一个有文字的字段。
-   背面不要勾题目，翻面就不会再显示正面。
-4. 选择保存位置（桌面即可）。
-5. 点 **转换**。
+   转换器读不了的新格式；页面会说明这一点，并告诉你怎么重新导出。
+2. 需要的话填**卡包名称**。留空就用文件里的牌组名；这个名字就是 Kindle 卡包列表里的名字，
+   也是 zip 的文件名。
+3. 在字段右边点「正面 / 背面」。下方预览显示第一条笔记在 Kindle 上的样子。认得出的笔记类型
+   会预勾惯用字段；其他类型的背面优先勾名字像答案的字段（解释、释义、Answer、Meaning 等），
+   没有就勾第一个有文字的字段。
+4. 点「转换并下载 .zip」，得到 `名字.kindle-anki.zip`。
+5. 用 USB 把 zip 拷进 Kindle（放哪个文件夹都行），再在 Kindle 上用
+   **工具 → Kindle Anki → 导入卡包 → Kindle 里已有的卡包文件**。
 
-会生成同名的三样：
+转换全程在本机浏览器里，不会上传卡包，也不会把 API key 写进卡包。
 
-- `名字.kindle-anki.zip` —— 把这一个文件拷到 Kindle 即可
-- `名字.kindle-anki.json` 和 `名字.kindle-anki.media/` —— 同样内容的未打包版
-
-转换全程在本机，不会上传卡包，也不会把 API key 写进卡包。
+开发者也可以从源码运行 Python 转换器：`python3 tools/kindle_import_app.py`（需要带 Tcl/Tk 的
+Python 3），或 `desktop/Kindle-Anki-Import.command` / `desktop/Kindle-Anki-Import.bat`。它除了 zip
+还会生成未打包的 `名字.kindle-anki.json` 和 `名字.kindle-anki.media/`，并在 8766 端口提供给下面的
+Wi-Fi 导入。
 
 ## 3. 在 Kindle 上导入
 
@@ -87,9 +85,9 @@ Kindle（见下文）。
 和电脑转换器的 8766 一样只用于家里 Wi-Fi。Kindle 自己从不解包 Anki 文件，只接收
 转换好的卡包。
 
-### 从电脑转换器导入（Wi-Fi，不用 USB）
+### 从 Python 转换器导入（Wi-Fi，不用 USB）
 
-转换窗口保持打开。右侧会用大号字体显示局域网 IP（例如 `192.168.1.10`）。可点
+需要从源码运行的 Python 转换器（见第 2 节）。转换窗口保持打开。右侧会用大号字体显示局域网 IP（例如 `192.168.1.10`）。可点
 「复制 IP」。端口 **8766** 没有密码。只用家里 Wi-Fi。
 
 1. Kindle 和电脑连同一个 Wi-Fi。
@@ -129,7 +127,7 @@ USB 只当备用：把 zip 拷进 Kindle，再用「导入卡包 → Kindle 里�
   配对码。在网页里填好接口、模型和 API key，填配对码保存。网页只能写入密钥，读不回来。
   Kindle 还没设置 AI 时，网页会预填 DeepSeek（`https://api.deepseek.com`，模型 `deepseek-flash`），
   只需粘贴 key；用别家就改这两项。已经设置过 AI 时，留空的项保持 Kindle 上原来的值。
-- **从电脑转换器（同一 Wi-Fi）**：先在转换器「AI 设置」里粘贴好配置，再在 Kindle 上填电脑 IP
+- **从电脑转换器（同一 Wi-Fi）**（从源码运行的 Python 转换器）：先在转换器「AI 设置」里粘贴好配置，再在 Kindle 上填电脑 IP
   和转换器窗口里的配对码。配对码输错 5 次后转换器不再提供 AI 设置，在转换器「AI 设置」里
   再点一次保存即可换新码。
 - **在 Kindle 上直接填写**。

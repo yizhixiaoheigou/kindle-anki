@@ -10,8 +10,8 @@
 
 ## 当前状态
 
-- `main` 与 `origin/main` 一致（2026-10-09 已推送），CI 在装了 Lua 和 node 的环境下全绿。
-- 维护者的 Kindle 比 `main` 落后一次部署；维护者正在上面走首次使用流程。
+- `main` 上是 0.2.0（标签 `v0.2.0`），尚未推送；`origin/main` 停在 2026-10-09，当时 CI 在装了 Lua 和 node 的环境下全绿。
+- 维护者的 Kindle 比 `main` 落后好几个提交；维护者正在上面走首次使用流程。
 - 详情与下一步见 [`docs/HANDOFF.md`](docs/HANDOFF.md)（英文），历程见 [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md)。
 
 ## 命令
@@ -24,9 +24,13 @@ python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 python3 -m unittest tests.test_kindle_schedule
 python3 -m unittest tests.test_kindle_cards.KindlePackTests.test_round_trip_and_rebuild_deck_card_ids
 
-# 桌面转换器（只用标准库 + Tk，无需安装）
+# Python 转换器（标准库 + Tk；从源码运行，不再作为应用发布）
 python3 tools/kindle_import_app.py
 python3 tools/kindle_anki_importer.py --help   # 命令行转换器
+
+# 发布的电脑转换器：把 web/ 做成一个离线 HTML 文件
+python3 packaging/build_standalone_html.py dist/release/Kindle-Anki-converter.html
+./packaging/make_release_zips.sh 0.2.0          # 插件 zip 和这个 HTML 写到 dist/release/
 
 # 通过 Wi-Fi 把插件装到 Kindle（走 KOReader 自带的 SSH 服务，密钥登录）
 scripts/kindle-deploy.sh <kindle-ip>              # 装完在 KOReader 里 退出 → 重启 KOReader
@@ -46,9 +50,9 @@ scripts/kindle-deploy.sh <kindle-ip> --enable-restart  # 每台 Kindle 执行一
 
 项目分三部分，共用同一份契约——**包格式**（`docs/PACK_FORMAT.md`）：`name.kindle-anki.json` 加同名 `name.kindle-anki.media/`，打包成 `name.kindle-anki.zip`。
 
-1. **桌面转换器（`tools/`，Python 标准库）。** `kindle_apkg.py` 读取 `.apkg` 里的 SQLite 集合。`kindle_anki_importer.py` 把笔记映射成卡片：Basic 类笔记变成 `short_answer`，带 `||` 选项字段的笔记变成 `choice`，填空笔记（模型 `type` 为 1）按填空编号各变成一张 `short_answer`；它还提供驱动字段映射的 `inspect_apkg`。`kindle_cards.py` 定义标准包结构（`FORMAT_NAME = "kindle-anki"`）。`kindle_bundle.py` 写出 JSON、媒体目录和 zip，并去掉 `ai.api_key`。`kindle_import_app.py` 是 Tk 窗口，视觉常量在 `kindle_import_ui.py`；它还运行 `kindle_pack_server.py`（插件拉取用的 `:8766` 局域网服务），并负责 4 位配对码的 AI 设置配对。测试模块把 `tools/` 加进 `sys.path`，直接按模块名导入。
+1. **Python 转换器（`tools/`，Python 标准库）。** `kindle_apkg.py` 读取 `.apkg` 里的 SQLite 集合。`kindle_anki_importer.py` 把笔记映射成卡片：Basic 类笔记变成 `short_answer`，带 `||` 选项字段的笔记变成 `choice`，填空笔记（模型 `type` 为 1）按填空编号各变成一张 `short_answer`；它还提供驱动字段映射的 `inspect_apkg`。`kindle_cards.py` 定义标准包结构（`FORMAT_NAME = "kindle-anki"`）。`kindle_bundle.py` 写出 JSON、媒体目录和 zip，并去掉 `ai.api_key`。`kindle_import_app.py` 是 Tk 窗口，视觉常量在 `kindle_import_ui.py`；它还运行 `kindle_pack_server.py`（插件拉取用的 `:8766` 局域网服务），并负责 4 位配对码的 AI 设置配对。测试模块把 `tools/` 加进 `sys.path`，直接按模块名导入。
 
-2. **浏览器转换器（`plugin/kindleanki.koplugin/web/*.js`）。** 这是 Python 流水线的 JS 移植，由插件提供页面，在手机或电脑浏览器里运行，然后上传成品包。`test_kindle_web_converter.py` 用同一个合成 `.apkg` 同时跑两套转换器，要求包字段、zip 布局和 inspect 报告完全一致。**改转换逻辑时，Python 和 JS 必须同步修改。**
+2. **浏览器转换器（`plugin/kindleanki.koplugin/web/*.js`）。** 这是 Python 流水线的 JS 移植，由插件提供页面，在手机或电脑浏览器里运行，然后上传成品包。`packaging/build_standalone_html.py` 还会把它内联成一个离线 HTML 文件，即发布的电脑转换器；此时 `KINDLE_ANKI_STANDALONE`（或 `file://` 地址）让 `app.js` 跳过所有 `/api` 调用，只下载 zip。`test_kindle_web_converter.py` 用同一个合成 `.apkg` 同时跑两套转换器，要求包字段、zip 布局和 inspect 报告完全一致。**改转换逻辑时，Python 和 JS 必须同步修改。**
 
 3. **KOReader 插件（`plugin/kindleanki.koplugin/`，Lua，AGPL）。**
    - `main.lua`：菜单（工具 → Kindle Anki）、两类卡片的复习界面、三种导入方式（USB、从 `:8766` 拉取、浏览器页面）和 AI 设置。

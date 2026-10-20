@@ -10,8 +10,8 @@ Product boundaries, red lines, and doc rules live in [`AGENTS.md`](./AGENTS.md) 
 
 ## Current state
 
-- `main` equals `origin/main` (pushed 2026-10-09) and CI is green with Lua and node.
-- The maintainer's Kindle is one deploy behind `main`; the owner is testing the first-run flows on it.
+- `main` holds 0.2.0 (tag `v0.2.0`), not yet pushed; `origin/main` is from 2026-10-09, when CI was green with Lua and node.
+- The maintainer's Kindle is several commits behind `main`; the owner is testing the first-run flows on it.
 - Details and next steps: [`docs/HANDOFF.md`](docs/HANDOFF.md). History: [`docs/PROJECT_HISTORY.md`](docs/PROJECT_HISTORY.md).
 
 ## Commands
@@ -24,9 +24,13 @@ python3 -m unittest discover -s tests -p 'test_kindle_*.py'
 python3 -m unittest tests.test_kindle_schedule
 python3 -m unittest tests.test_kindle_cards.KindlePackTests.test_round_trip_and_rebuild_deck_card_ids
 
-# Desktop converter (stdlib + Tk only, no install needed)
+# Python converter (stdlib + Tk; run from source, no longer released as an app)
 python3 tools/kindle_import_app.py
 python3 tools/kindle_anki_importer.py --help   # CLI converter
+
+# The released computer converter: web/ as one offline HTML file
+python3 packaging/build_standalone_html.py dist/release/Kindle-Anki-converter.html
+./packaging/make_release_zips.sh 0.2.0          # plugin zip + that HTML into dist/release/
 
 # Install the plugin on a Kindle over Wi-Fi (KOReader's SSH server, key login)
 scripts/kindle-deploy.sh <kindle-ip>              # then Exit → Restart KOReader
@@ -46,9 +50,9 @@ scripts/kindle-deploy.sh <kindle-ip> --enable-restart  # once per Kindle: instal
 
 There are three parts. They share one contract, the **pack format** (`docs/PACK_FORMAT.md`): `name.kindle-anki.json` + sibling `name.kindle-anki.media/`, zipped as `name.kindle-anki.zip`.
 
-1. **Desktop converter (`tools/`, Python stdlib).** `kindle_apkg.py` reads the `.apkg` SQLite collection. `kindle_anki_importer.py` maps notes to cards: Basic-style notes become `short_answer`, notes with `||` option fields become `choice`, and cloze notes (model `type` 1) become one `short_answer` per cloze number. It also has `inspect_apkg`, which drives field mapping. `kindle_cards.py` defines the canonical pack schema (`FORMAT_NAME = "kindle-anki"`). `kindle_bundle.py` writes the JSON, media, and zip, and strips `ai.api_key`. `kindle_import_app.py` is the Tk window, with visual tokens in `kindle_import_ui.py`. It also runs `kindle_pack_server.py`, the LAN server on `:8766` that the plugin pulls from, and handles AI-settings pairing with a 4-digit code. Test modules add `tools/` to `sys.path` and import modules by bare name.
+1. **Python converter (`tools/`, Python stdlib).** `kindle_apkg.py` reads the `.apkg` SQLite collection. `kindle_anki_importer.py` maps notes to cards: Basic-style notes become `short_answer`, notes with `||` option fields become `choice`, and cloze notes (model `type` 1) become one `short_answer` per cloze number. It also has `inspect_apkg`, which drives field mapping. `kindle_cards.py` defines the canonical pack schema (`FORMAT_NAME = "kindle-anki"`). `kindle_bundle.py` writes the JSON, media, and zip, and strips `ai.api_key`. `kindle_import_app.py` is the Tk window, with visual tokens in `kindle_import_ui.py`. It also runs `kindle_pack_server.py`, the LAN server on `:8766` that the plugin pulls from, and handles AI-settings pairing with a 4-digit code. Test modules add `tools/` to `sys.path` and import modules by bare name.
 
-2. **Browser converter (`plugin/kindleanki.koplugin/web/*.js`).** This is a JS port of the Python pipeline. It is served by the plugin, runs in the phone or computer browser, and uploads a finished pack. `test_kindle_web_converter.py` runs both converters on the same synthetic `.apkg` and requires field-identical packs, zip layouts, and inspect reports. **Any change to the conversion logic must be made in both Python and JS.**
+2. **Browser converter (`plugin/kindleanki.koplugin/web/*.js`).** This is a JS port of the Python pipeline. It is served by the plugin, runs in the phone or computer browser, and uploads a finished pack. `packaging/build_standalone_html.py` also inlines it into one offline HTML file, the released computer converter; there `KINDLE_ANKI_STANDALONE` (or a `file://` URL) makes `app.js` skip every `/api` call and only download the zip. `test_kindle_web_converter.py` runs both converters on the same synthetic `.apkg` and requires field-identical packs, zip layouts, and inspect reports. **Any change to the conversion logic must be made in both Python and JS.**
 
 3. **KOReader plugin (`plugin/kindleanki.koplugin/`, Lua, AGPL).**
    - `main.lua` holds the menu (Tools → Kindle Anki), the review UI for both card families, the imports (USB, `:8766` pull, browser page), and AI settings.

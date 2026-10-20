@@ -112,3 +112,8 @@ and [CHANGELOG.md](../CHANGELOG.md). Single-language by design (see AGENTS.md).
   - converter: subdeck titles, option images, reverse and type-in
     templates, one-line options, tables, answer parsing, URL-encoded image
     names, browser memory.
+- The Windows build needed a Windows PC that was not reachable. Since the
+  browser page already converted everything, the computer converter became
+  that page as one offline HTML file (`packaging/build_standalone_html.py`),
+  and the release dropped the PyInstaller apps and the Python fallback zip.
+  The Tk app stays runnable from source.

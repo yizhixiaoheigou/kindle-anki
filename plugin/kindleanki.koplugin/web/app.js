@@ -3,12 +3,20 @@
  * (KindleAnkiConvert), then push the finished pack onto this Kindle.
  * No keys and no card content ever leave the browser except the finished
  * pack upload to the Kindle itself.
+ *
+ * The same page is also the computer converter: a single offline HTML file
+ * (packaging/build_standalone_html.py) that only converts and downloads.
  */
 (function () {
     "use strict";
 
     var K = window.KindleApkg;
     var C = window.KindleAnkiConvert;
+    // The offline copy, or this page opened from disk, has no Kindle behind it.
+    var STANDALONE = window.KINDLE_ANKI_STANDALONE === true || location.protocol === "file:";
+    var DOWNLOAD_LABEL = STANDALONE ? "转换并下载 .zip" : "只转换，下载 .zip";
+    var USB_STEPS = "用 USB 线连上 Kindle，把这个 zip 拷进 Kindle（放哪个文件夹都行），" +
+        "再在 Kindle 上打开：工具 → Kindle Anki → 导入卡包 → Kindle 里已有的卡包文件，选中它。";
     var state = {
         fileName: "",
         bytes: null,
@@ -145,25 +153,38 @@
     // Kindle connection and the packs already on it
     // ------------------------------------------------------------------
 
+    // Convert and download only: no tabs, no send button, no Kindle API.
+    function initStandalone() {
+        setStatus("ok", "电脑版：只在这台电脑上转换，不连接 Kindle，也不上传文件");
+        $("tabs").hidden = true;
+        $("send").hidden = true;
+        $("download").className = "btn primary";
+        $("download").textContent = DOWNLOAD_LABEL;
+        $("step3-title").textContent = "下载卡包，拷进 Kindle";
+    }
+
     function init() {
         showInAppHint();
+        if (STANDALONE) initStandalone();
         TABS.forEach(function (tab) {
             $("tab-" + tab).addEventListener("click", function () { showTab(tab); });
             $("tab-" + tab).addEventListener("keydown", onTabKey);
         });
-        fetch("/api/info").then(function (response) { return response.json(); }).then(function (info) {
-            setStatus("ok", "已连接 Kindle" + (info.ip ? "（" + info.ip + "）" : ""));
-            prefillAi(info.ai_configured === true);
-        }).catch(function () {
-            setStatus("down", "连不上 Kindle。确认地址和 Kindle 屏幕上显示的一致，再刷新本页。");
-        });
-        refreshPacks();
-        // The Kindle's "Set up AI" QR code points at #ai, also when this page
-        // is already open in the tab the phone reuses.
-        if (location.hash === "#ai") showTab("ai");
-        window.addEventListener("hashchange", function () {
+        if (!STANDALONE) {
+            fetch("/api/info").then(function (response) { return response.json(); }).then(function (info) {
+                setStatus("ok", "已连接 Kindle" + (info.ip ? "（" + info.ip + "）" : ""));
+                prefillAi(info.ai_configured === true);
+            }).catch(function () {
+                setStatus("down", "连不上 Kindle。确认地址和 Kindle 屏幕上显示的一致，再刷新本页。");
+            });
+            refreshPacks();
+            // The Kindle's "Set up AI" QR code points at #ai, also when this
+            // page is already open in the tab the phone reuses.
             if (location.hash === "#ai") showTab("ai");
-        });
+            window.addEventListener("hashchange", function () {
+                if (location.hash === "#ai") showTab("ai");
+            });
+        }
         $("file").addEventListener("change", function (event) {
             var file = event.target.files && event.target.files[0];
             if (file) onFile(file);
@@ -190,8 +211,8 @@
         $("pack-list").addEventListener("click", onPackListClick);
         $("ai-save").addEventListener("click", onSaveAiSettings);
         if (typeof DecompressionStream === "undefined") {
-            setError("这个浏览器解不开 .apkg（需要较新的 Chrome、Safari 或 Firefox）。" +
-                "可以换个浏览器，或用电脑上的 Kindle Anki 转换器。");
+            setError("这个浏览器解不开 .apkg（需要较新的 Chrome、Edge、Safari 或 Firefox）。" +
+                (STANDALONE ? "用新版浏览器打开这个文件再试。" : "可以换个浏览器，或用电脑版转换器。"));
         }
     }
 
@@ -539,7 +560,8 @@
         state.busy = !!label;
         $("send").disabled = state.busy;
         $("download").disabled = state.busy;
-        $("send").textContent = label || "转换并发送到 Kindle";
+        if (STANDALONE) $("download").textContent = label || DOWNLOAD_LABEL;
+        else $("send").textContent = label || "转换并发送到 Kindle";
     }
 
     // Resolves to the bundle for the current mapping, converting only when
@@ -627,7 +649,8 @@
             link.click();
             document.body.removeChild(link);
             setTimeout(function () { URL.revokeObjectURL(link.href); }, 5000);
-            setNote("report", "ok", "已下载 " + bundle.zipName + "：" + conversionSummary() + "。");
+            setNote("report", "ok", "已下载 " + bundle.zipName + "：" + conversionSummary() + "。" +
+                (STANDALONE ? "\n" + USB_STEPS : ""));
         }).catch(function (err) {
             setBusy("");
             setNote("report", "err", errorText(err));

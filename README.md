@@ -31,15 +31,6 @@ On the Kindle (photos of an earlier version of the study screens):
   <img src="screenshots/kindle-ai.jpg" width="32%" alt="AI explanation on the Kindle">
 </p>
 
-The optional computer converter:
-
-<p align="center">
-  <img src="screenshots/converter-idle.jpg" width="24%" alt="Converter, idle">
-  <img src="screenshots/converter-mapping.jpg" width="24%" alt="Converter, field mapping">
-  <img src="screenshots/converter-converting.jpg" width="24%" alt="Converter, converting">
-  <img src="screenshots/converter-success.jpg" width="24%" alt="Converter, done and sharing over Wi-Fi">
-</p>
-
 ## Who this is for
 
 - A jailbroken Kindle running [KOReader](https://github.com/koreader/koreader), the open-source reading system for Kindle.
@@ -81,22 +72,28 @@ Details: [docs/USER_GUIDE.md](docs/USER_GUIDE.md). Old paths:
   Scanned with WeChat or another in-app browser, the page explains how to
   switch to the real browser. Its **卡包** tab lists and deletes packs on the
   Kindle.
-- **Computer converter over Wi-Fi.** Convert on a computer (below), keep the
-  window open, and enter the IP it shows. Port 8766 has **no password** and is
-  for home Wi-Fi only.
+- **Computer converter over Wi-Fi.** For the Python converter run from
+  source (below): keep its window open and enter the IP it shows. Port 8766
+  has **no password** and is for home Wi-Fi only.
 - **A file already on this Kindle.** Copy a `.kindle-anki.zip` over USB and
-  pick it.
+  pick it. Without Wi-Fi, make the zip with the offline converter below.
 
 The page closes by itself after 30 minutes without visits.
 
 ### Computer converter (optional)
 
-Prebuilt converter apps are unsigned local builds (a macOS universal2 `.app`
-and a Windows onedir) — see [packaging/README.md](packaging/README.md). Without
-one, install Python 3 with Tcl/Tk from python.org and use
-`desktop/Kindle-Anki-Import.command` (macOS) or `desktop/Kindle-Anki-Import.bat`
-(Windows). Pick `.apkg`, name the pack, map front/back fields, Convert.
-Output: `name.kindle-anki.zip`.
+`Kindle-Anki-converter-v<version>.html` from the release is the same import
+page as one offline file. Double-click it on macOS, Windows, or Linux; it
+opens in the browser, installs nothing, and sends nothing anywhere. Pick the
+`.apkg`, choose the fields, tap **转换并下载 .zip**, and copy the zip onto the
+Kindle over USB. When the computer and the Kindle share a Wi-Fi, opening the
+Kindle's own address in the computer browser is simpler: it sends the pack
+straight to the Kindle.
+
+Developers can still run the Python converter from source:
+`python3 tools/kindle_import_app.py` (Python 3 with Tcl/Tk), or
+`desktop/Kindle-Anki-Import.command` / `.bat`. It also serves port 8766 for
+**Computer converter over Wi-Fi**.
 
 ## Study
 
@@ -119,9 +116,9 @@ in one of three ways:
   a 4-digit pairing code. Scan it, fill in endpoint, model, and API key on the
   page's **AI** tab, enter the code, and save. DeepSeek's endpoint and model
   are filled in until you set your own, so a DeepSeek user only pastes a key.
-- **Computer converter over Wi-Fi.** Paste the config into the converter's
-  **AI settings**, then enter the computer's IP and the converter's pairing
-  code on the Kindle.
+- **Computer converter over Wi-Fi.** With the Python converter run from
+  source: paste the config into its **AI settings**, then enter the
+  computer's IP and its pairing code on the Kindle.
 - **Type it on the Kindle.**
 
 Requests go straight to `/v1/chat/completions`; card images are sent along as
@@ -131,7 +128,7 @@ Plain `http://` endpoints send the key unencrypted — prefer `https://`.
 ## Versus KAnki / anki.koplugin
 
 This tool **converts existing `.apkg`** decks (choice, cloze, images) in a phone or
-computer browser, or with a desktop converter, and reviews them in KOReader
+computer browser, or with the offline converter page, and reviews them in KOReader
 with its own scheduler.
 
 ## Development

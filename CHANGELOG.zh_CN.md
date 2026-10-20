@@ -4,6 +4,10 @@ Kindle Anki 的显著变化记录。格式参照 Keep a Changelog。
 
 ## 0.2.0 — 2026-10-20
 
+- 电脑转换器改成一个离线 HTML 文件 `Kindle-Anki-converter-v0.2.0.html`：就是 Kindle 上的浏览器导入页，
+  脚本全部内联。Mac、Windows、Linux 双击即可打开，在浏览器里转换，下载 zip 后用 USB 拷进 Kindle。
+  Release 里不再提供未签名的 macOS `.app`、Windows 版和 Python 退路 zip，两个转换器从此跑同一份代码。
+  Python Tk 应用仍可从源码运行（`python3 tools/kindle_import_app.py`），8766 端口照旧。
 - 转换真实卡组：
   - 按章节分了子牌组的卡组，卡包名用上级牌组名（「高项合并」，不再是「高项合并::05 信息系统工程」），
     章节按数字排序（第2章在第10章前面）。

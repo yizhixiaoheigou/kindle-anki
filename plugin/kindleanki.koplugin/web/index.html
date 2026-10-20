@@ -234,7 +234,7 @@
     <span id="inapp-steps"></span>
   </div>
 
-  <nav class="tabs" role="tablist" aria-label="页面">
+  <nav class="tabs" id="tabs" role="tablist" aria-label="页面">
     <button class="tab" role="tab" id="tab-import" aria-controls="view-import" aria-selected="true">导入</button>
     <button class="tab" role="tab" id="tab-packs" aria-controls="view-packs" aria-selected="false">卡包<span class="count" id="pack-count"></span></button>
     <button class="tab" role="tab" id="tab-ai" aria-controls="view-ai" aria-selected="false">AI</button>
@@ -269,7 +269,7 @@
       </div>
 
       <div class="step" id="step3" data-locked>
-        <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h2>发送到 Kindle</h2></div>
+        <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h2 id="step3-title">发送到 Kindle</h2></div>
         <div class="step-body">
           <div class="actions">
             <button class="btn primary" id="send">转换并发送到 Kindle</button>

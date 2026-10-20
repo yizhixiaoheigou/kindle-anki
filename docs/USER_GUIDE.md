@@ -27,36 +27,36 @@ Packs already under `/mnt/us/folo-anki/` still list. New imports go to
 
 ## 2. Convert an Anki deck on a computer
 
-macOS: double-click `dist/Kindle Anki Import.app`. The `.command` launcher
-opens that app if it is present.
+With the Kindle on the same Wi-Fi, skip this section: open the Kindle's
+import page (section 3) in the computer's browser instead.
 
-Windows: the packaged `Kindle-Anki-Import` onedir if you have it, or
-`desktop/Kindle-Anki-Import.bat` with Python 3 (Tcl/Tk) from
-[python.org](https://www.python.org/downloads/).
-
-In the window:
+Without Wi-Fi, use the offline converter: `Kindle-Anki-converter-v<version>.html`
+from the release. It is the same page as the Kindle's, in one file. Double-click
+it on macOS, Windows, or Linux; it opens in the browser, installs nothing, and
+sends nothing anywhere.
 
 1. Choose an Anki `.apkg`, exported with *Support older Anki versions*
    checked. Without it, Anki's default export keeps the cards in a newer
-   format the converter cannot read; the window says so and how to
-   re-export.
-2. Type a **pack name** if you want one. It starts as the deck name read from
-   the file; this name labels the pack on the Kindle and names the output
-   files. Leave it as is and you get the deck name.
-3. Tick **front** and **back** fields. They start pre-ticked: a recognised
-   note type gets its usual fields, and for any other the back is a field
-   named like an answer (解释, 释义, Answer, Meaning…) or else the first field
-   with text. Leave the question unchecked on the back if the flipped card
-   should not repeat the front.
-4. Choose a save folder (Desktop is fine).
-5. Click **Convert**.
+   format the converter cannot read; the page says so and how to re-export.
+2. Type a **pack name** if you want one. Left empty, the pack is named after
+   the deck read from the file; this name labels the pack on the Kindle and
+   names the zip.
+3. Tap **正面** / **背面** on the fields you want. The preview shows the first
+   note as the Kindle will. A recognised note type starts with its usual
+   fields ticked; for any other the back starts as a field named like an
+   answer (解释, 释义, Answer, Meaning…) or else the first field with text.
+4. Tap **转换并下载 .zip**. You get `name.kindle-anki.zip`.
+5. Copy that zip onto the Kindle over USB (any folder), then on the Kindle
+   use **Tools → Kindle Anki → Import packs → A file already on this Kindle**.
 
-You get three things with the same name:
+The page never uploads your deck and does not write API keys into the pack.
 
-- `name.kindle-anki.zip` — copy this one file onto the Kindle
-- `name.kindle-anki.json` and `name.kindle-anki.media/` — same content, unpacked
-
-The converter never uploads your deck. It does not write API keys into the pack.
+Developers can also run the Python converter from source:
+`python3 tools/kindle_import_app.py` (Python 3 with Tcl/Tk), or
+`desktop/Kindle-Anki-Import.command` / `desktop/Kindle-Anki-Import.bat`. It
+writes the zip plus an unpacked `name.kindle-anki.json` and
+`name.kindle-anki.media/`, and serves them on port 8766 for the Wi-Fi import
+below.
 
 ## 3. Import on the Kindle
 
@@ -115,9 +115,9 @@ visits. It has no password — home Wi-Fi only, like the computer
 converter's port 8766. The Kindle never unpacks Anki files itself; it only
 receives the finished pack.
 
-### From the computer converter (Wi-Fi, no USB)
+### From the Python converter (Wi-Fi, no USB)
 
-Keep the converter window open. The dock on the right shows the LAN IP in large
+This needs the Python converter run from source (section 2). Keep its window open. The dock on the right shows the LAN IP in large
 type (for example `192.168.1.10`). Use **Copy IP** if you want to paste it.
 Port **8766** has no password. Home Wi-Fi only.
 
@@ -168,8 +168,8 @@ to set it up, matching the three ways to import packs:
   page fills in DeepSeek (`https://api.deepseek.com`, model `deepseek-flash`)
   so only the key is left to paste; change both for another provider. Once
   AI is set up, empty fields keep what the Kindle already has.
-- **Computer converter over Wi-Fi**: paste your config into the converter's
-  **AI settings**, then enter the computer's IP and the converter's pairing
+- **Computer converter over Wi-Fi** (the Python converter run from source):
+  paste your config into the converter's **AI settings**, then enter the computer's IP and the converter's pairing
   code on the Kindle. After 5 wrong codes the converter stops handing out the
   settings; click **Save** in its AI settings again for a new code.
 - **Type it on the Kindle**.

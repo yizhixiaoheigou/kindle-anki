@@ -27,15 +27,6 @@ Kindle 上的效果（照片是旧版学习界面）：
   <img src="screenshots/kindle-ai.jpg" width="32%" alt="Kindle 上的 AI 解析">
 </p>
 
-可选的电脑转换器：
-
-<p align="center">
-  <img src="screenshots/converter-idle.jpg" width="24%" alt="转换器，待机">
-  <img src="screenshots/converter-mapping.jpg" width="24%" alt="转换器，勾选字段">
-  <img src="screenshots/converter-converting.jpg" width="24%" alt="转换器，转换中">
-  <img src="screenshots/converter-success.jpg" width="24%" alt="转换完成，可 Wi-Fi 导入">
-</p>
-
 ## 给谁用
 
 - 已越狱、装着 [KOReader](https://github.com/koreader/koreader)（开源的 Kindle 阅读系统）的 Kindle。
@@ -71,19 +62,23 @@ Kindle 上的效果（照片是旧版学习界面）：
   笔记的效果，然后点「转换并发送到 Kindle」。转换在浏览器里完成，Kindle 自己从不解包 Anki
   文件。用微信等 App 扫码时，网页会提示怎么换到手机浏览器。网页的「卡包」页可以查看和
   删除 Kindle 上的卡包。
-- **从电脑转换器（同一 Wi-Fi）。** 在电脑上转换（见下），窗口不要关，在 Kindle 上填窗口里
-  显示的 IP。8766 端口**没有密码**，只建议家里 Wi-Fi。
-- **Kindle 里已有的卡包文件。** 用 USB 把 `.kindle-anki.zip` 拷进 Kindle 再选它。
+- **从电脑转换器（同一 Wi-Fi）。** 给从源码运行的 Python 转换器用（见下）：窗口不要关，
+  在 Kindle 上填窗口里显示的 IP。8766 端口**没有密码**，只建议家里 Wi-Fi。
+- **Kindle 里已有的卡包文件。** 用 USB 把 `.kindle-anki.zip` 拷进 Kindle 再选它。没有 Wi-Fi
+  时用下面的离线转换器生成 zip。
 
 导入网页 30 分钟无人访问会自动关闭。
 
 ### 电脑转换器（可选）
 
-免安装的转换器是本机构建的未签名应用（macOS universal2 `.app` 和 Windows
-onedir），见 [packaging/README.zh_CN.md](packaging/README.zh_CN.md)。没有现成
-二进制时，从 python.org 安装带 Tcl/Tk 的 Python 3，用
-`desktop/Kindle-Anki-Import.command`（Mac）或 `desktop/Kindle-Anki-Import.bat`
-（Windows）。选 `.apkg`，填卡包名称，勾正面/背面字段，转换，得到 `名字.kindle-anki.zip`。
+Release 里的 `Kindle-Anki-converter-v<版本>.html` 就是同一个导入网页的离线版。Mac、Windows、
+Linux 上双击就在浏览器里打开，不用安装，也不往任何地方发数据。选 `.apkg`、勾字段、点
+「转换并下载 .zip」，再用 USB 把 zip 拷进 Kindle。电脑和 Kindle 连同一个 Wi-Fi 时，更省事的
+是用电脑浏览器打开 Kindle 上显示的地址，转换完直接发到 Kindle。
+
+开发者仍可从源码运行 Python 转换器：`python3 tools/kindle_import_app.py`（需要带 Tcl/Tk 的
+Python 3），或 `desktop/Kindle-Anki-Import.command` / `.bat`。它另外提供 8766 端口给
+「从电脑转换器（同一 Wi-Fi）」用。
 
 ## 刷题
 
@@ -101,8 +96,8 @@ AI 解析只用 Kindle 上保存的一份设置，卡包里自带的 AI 字段�
 - **用手机或电脑浏览器（推荐）。** Kindle 显示二维码和 4 位配对码。扫码打开网页，在「AI」
   页填好接口、模型和 API key，再填配对码保存。接口和模型默认预填 DeepSeek，用 DeepSeek 只需
   粘贴 key。
-- **从电脑转换器（同一 Wi-Fi）。** 先在转换器「AI 设置」里粘贴好配置，再在 Kindle 上填电脑
-  IP 和转换器窗口里的配对码。
+- **从电脑转换器（同一 Wi-Fi）。** 用从源码运行的 Python 转换器时：先在它的「AI 设置」里
+  粘贴好配置，再在 Kindle 上填电脑 IP 和它窗口里的配对码。
 - **在 Kindle 上直接填写。**
 
 请求直连 `/v1/chat/completions`；卡片带图时，图片会以 base64 一并发出。思考过程会藏起来，
@@ -111,7 +106,7 @@ AI 解析只用 Kindle 上保存的一份设置，卡包里自带的 AI 字段�
 
 ## 和 KAnki / anki.koplugin 的差别
 
-本工具在**手机或电脑浏览器里（或用电脑转换器）转换已有的 `.apkg`**（选择题、填空题 + 图），在 KOReader
+本工具在**手机或电脑浏览器里（或用离线转换网页）转换已有的 `.apkg`**（选择题、填空题 + 图），在 KOReader
 里用独立调度刷。
 
 ## 开发
