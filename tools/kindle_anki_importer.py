@@ -25,6 +25,7 @@ from typing import Any, Iterable
 from kindle_apkg import (
     AnkiImportError,
     MAX_ZIP_ENTRY_BYTES,
+    NewFormatExportError,
     NoImportableCardsError,
     _card_text,
     _deck_name,
@@ -77,6 +78,12 @@ _CLOZE = re.compile(
 )
 _CLOZE_TEMPLATE_FIELD = re.compile(r"\{\{cloze:([^}]+)\}\}", re.IGNORECASE)
 _IMAGE_OCCLUSION = "image-occlusion:"
+# Field names that usually hold the answer, for note types nothing else
+# recognised. Checked in this order.
+_BACK_HINTS = (
+    "back", "answer", "背面", "后面", "答案", "response", "解析", "解释", "释义",
+    "meaning", "definition", "translation", "翻译", "意思", "explanation",
+)
 
 
 def _key(value: str) -> str:
@@ -127,6 +134,22 @@ def _joined_text(fields: list[str], indexes: tuple[int, ...]) -> str:
 
 def _joined_raw(fields: list[str], indexes: tuple[int, ...]) -> str:
     return "".join(_field(fields, index) for index in indexes)
+
+
+def _suggest_back(names: list[str], sample: list[str]) -> list[int]:
+    """Back field for an unrecognised note type: a field named like an
+    answer, else the first later field with text in the first note."""
+
+    if len(names) < 2:
+        return []
+    keyed = {_key(name): index for index, name in enumerate(names) if index > 0}
+    for hint in _BACK_HINTS:
+        if _key(hint) in keyed:
+            return [keyed[_key(hint)]]
+    for index in range(1, len(names)):
+        if _clean(_extract_field(sample, index)):
+            return [index]
+    return [len(names) - 1]
 
 
 def _is_cloze_model(model: dict[str, Any]) -> bool:
@@ -215,7 +238,7 @@ def _models(
     field_mapping: dict[str, Any] | None = None,
 ) -> tuple[dict[int, KindleModel], list[str]]:
     if not raw_models or raw_models.strip() in {"", "{}"}:
-        raise AnkiImportError(
+        raise NewFormatExportError(
             "this export uses the newer Anki format (schema 18+), which is not "
             "supported by this first importer yet. Re-export with Anki's older "
             "format compatibility option."
@@ -641,8 +664,10 @@ def inspect_apkg(apkg_path: Path) -> dict[str, Any]:
                 names = [str(field.get("name", "")) for field in fields if isinstance(field, dict)]
                 detected = supported.get(model_id)
                 suggested_front = list(detected.front_indexes) if detected else ([0] if names else [])
-                suggested_back = list(detected.back_indexes) if detected else (
-                    [len(names) - 1] if len(names) > 1 else []
+                suggested_back = (
+                    list(detected.back_indexes)
+                    if detected
+                    else _suggest_back(names, samples.get(model_id, []))
                 )
                 models.append({
                     "id": model_id,
@@ -669,7 +694,7 @@ def inspect_apkg(apkg_path: Path) -> dict[str, Any]:
             "deck_names": [name for _, name in ranked],
             "suggested_title": suggested_title,
             "models": models,
-            "unsupported_models": unsupported,
+            "unsupported_models": sorted(unsupported),
         }
     finally:
         connection.close()

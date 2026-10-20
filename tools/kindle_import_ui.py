@@ -73,6 +73,9 @@ COPY = {
     "drain_fail": "界面更新失败。可复制错误详情。",
     "inspect_fail_title": "打不开这个文件。",
     "inspect_fail_body": "确认是 Anki 导出的 .apkg，不是 .colpkg，也不是只用新格式的备份。",
+    "new_format_title": "这个 .apkg 是新版 Anki 格式，转换器读不了。",
+    "new_format_body": "在 Anki 里重新导出：选中牌组 → 导出 → 格式选 .apkg → 勾选「支持旧版本 Anki」"
+    "（Support older Anki versions）→ 导出，再选新导出的文件。",
     "convert_fail": "转换失败。卡包没改动。",
     "no_cards": "没有可导入的卡片：{total} 张全部跳过（{reasons}）。",
     "share_fail": "无法开启无线导入：{err}",

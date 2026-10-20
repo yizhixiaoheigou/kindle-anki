@@ -38,6 +38,12 @@
         error.name = "AnkiError";
         return error;
     }
+    // An .apkg exported without "Support older Anki versions".
+    function NewFormatError(message) {
+        var error = AnkiError(message);
+        error.code = "new_format_export";
+        return error;
+    }
     function PackageError(message) {
         var error = new Error(message);
         error.name = "KindlePackageError";
@@ -224,6 +230,12 @@
     // passes resolve nested clozes from the innermost out.
     var CLOZE = /\{\{c(\d+)::((?:(?!\{\{|\}\})[\s\S])*?)(?:::((?:(?!\{\{|\}\})[\s\S])*?))?\}\}/g;
     var IMAGE_OCCLUSION = "image-occlusion:";
+    // Field names that usually hold the answer, for note types nothing else
+    // recognised. Checked in this order.
+    var BACK_HINTS = [
+        "back", "answer", "背面", "后面", "答案", "response", "解析", "解释", "释义",
+        "meaning", "definition", "translation", "翻译", "意思", "explanation",
+    ];
 
     function cardText(value) {
         if (UNSUPPORTED_MARKUP.test(value)) {
@@ -325,6 +337,30 @@
             parts.push(field(fields, indexes[i]));
         }
         return parts.join("");
+    }
+
+    // Back field for an unrecognised note type: a field named like an
+    // answer, else the first later field with text in the first note.
+    function suggestBack(names, sample) {
+        if (names.length < 2) {
+            return [];
+        }
+        var keyed = Object.create(null);
+        for (var i = 1; i < names.length; i++) {
+            keyed[nameKey(names[i])] = i;
+        }
+        for (var h = 0; h < BACK_HINTS.length; h++) {
+            var key = nameKey(BACK_HINTS[h]);
+            if (key in keyed) {
+                return [keyed[key]];
+            }
+        }
+        for (var index = 1; index < names.length; index++) {
+            if (clean(extractField(sample, index))) {
+                return [index];
+            }
+        }
+        return [names.length - 1];
     }
 
     function isClozeModel(model) {
@@ -443,7 +479,7 @@
 
     function detectModels(rawModels, fieldMapping) {
         if (!rawModels || rawModels.trim() === "" || rawModels.trim() === "{}") {
-            throw AnkiError(
+            throw NewFormatError(
                 "this export uses the newer Anki format (schema 18+), which is not " +
                 "supported by this first importer yet. Re-export with Anki's older " +
                 "format compatibility option.");
@@ -660,16 +696,19 @@
     }
 
     ApkgArchive.prototype.collectionName = function () {
+        // A new-format export keeps the real cards in the zstd-compressed
+        // collection.anki21b; its collection.anki2 is only a placeholder note
+        // asking to update Anki, so never fall back to it.
         if (this.zip.has("collection.anki21")) {
             return "collection.anki21";
         }
+        if (this.zip.has("collection.anki21b")) {
+            throw NewFormatError(
+                "this .apkg uses the newer Anki export format (collection.anki21b), " +
+                "which the converter cannot read. " + LEGACY_EXPORT_HINT);
+        }
         if (this.zip.has("collection.anki2")) {
             return "collection.anki2";
-        }
-        if (this.zip.has("collection.anki21b")) {
-            throw AnkiError(
-                "cannot decompress collection.anki21b; " +
-                "export an .apkg compatible with collection.anki21. " + LEGACY_EXPORT_HINT);
         }
         throw AnkiError(".apkg has no collection.anki21 or collection.anki2");
     };
@@ -1032,7 +1071,7 @@
                     var suggestedFront = detectedModel ? detectedModel.frontIndexes.slice()
                         : (names.length ? [0] : []);
                     var suggestedBack = detectedModel ? detectedModel.backIndexes.slice()
-                        : (names.length > 1 ? [names.length - 1] : []);
+                        : suggestBack(names, samples[modelId] || []);
                     models.push({
                         id: modelId,
                         name: String(model.name == null ? "Unnamed" : model.name),
@@ -1332,16 +1371,21 @@
         });
     }
 
+    // Both start inside a promise so a synchronous throw (a wrong file
+    // name, a new-format export) reaches the caller's .catch.
     function importApkg(fileBytes, fileName, options) {
-        var archive = new ApkgArchive(fileBytes, fileName);
-        return archive.readCollection().then(function (database) {
-            return importFromDatabase(archive, database, options);
+        return Promise.resolve().then(function () {
+            var archive = new ApkgArchive(fileBytes, fileName);
+            return archive.readCollection().then(function (database) {
+                return importFromDatabase(archive, database, options);
+            });
         });
     }
 
     function inspectApkg(fileBytes, fileName) {
-        var archive = new ApkgArchive(fileBytes, fileName);
-        return new ApkgInspector(archive).read();
+        return Promise.resolve().then(function () {
+            return new ApkgInspector(new ApkgArchive(fileBytes, fileName)).read();
+        });
     }
 
     // ------------------------------------------------------------------
@@ -1753,6 +1797,7 @@
         correctIndices: correctIndices,
         embeddedChoice: embeddedChoice,
         packedOptions: packedOptions,
+        renderCloze: renderCloze,
         safeStem: safeStem,
         packStem: packStem,
         validatePackage: validatePackage,

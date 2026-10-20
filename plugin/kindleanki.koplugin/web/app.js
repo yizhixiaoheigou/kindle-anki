@@ -307,7 +307,14 @@
                 $("step2").scrollIntoView({ block: "start", behavior: "smooth" });
             }).catch(function (err) {
                 $("file-name").textContent = "读不了这个文件。点这里换一个";
-                setError("读不了这个 .apkg：" + errorText(err) + "。导出时记得勾选「支持旧版本 Anki」。");
+                if (err && err.code === "new_format_export") {
+                    // Same wording as new_format_* in tools/kindle_import_ui.py.
+                    setError("这个 .apkg 是新版 Anki 格式，转换器读不了。在 Anki 里重新导出：" +
+                        "选中牌组 → 导出 → 格式选 .apkg → 勾选「支持旧版本 Anki」" +
+                        "（Support older Anki versions）→ 导出，再选新导出的文件。");
+                } else {
+                    setError("读不了这个 .apkg：" + errorText(err) + "。导出时记得勾选「支持旧版本 Anki」。");
+                }
             });
         };
         reader.onerror = function () {
@@ -371,10 +378,30 @@
         renderPreviews();
     }
 
-    function sideText(model, list) {
+    // render turns a raw field into what the card shows; the default is
+    // the field as it is.
+    function sideText(model, list, render) {
         return list.map(function (fieldIndex) {
-            return plainText(model.sample && model.sample[fieldIndex]);
+            var raw = String((model.sample && model.sample[fieldIndex]) || "");
+            if (render) raw = render(raw);
+            // The converter keeps an image-only field, so show that it is there.
+            return plainText(raw) || (/<\s*img\b/i.test(raw) ? "（图片）" : "");
         }).filter(Boolean).join("\n");
+    }
+
+    // A cloze note previews as its first card: c1 hidden on the front and
+    // revealed on the back, above Back Extra.
+    function clozeSides(model, fields) {
+        function hide(raw) { return C.renderCloze(raw, 1, false)[0]; }
+        function reveal(raw) { return C.renderCloze(raw, 1, true)[0]; }
+        if (sideText(model, fields.front, reveal).indexOf("[image-occlusion:") >= 0) {
+            return { front: "Anki 的图片遮挡卡暂不支持，转换时会跳过。", back: "—" };
+        }
+        return {
+            front: sideText(model, fields.front, hide),
+            back: [sideText(model, fields.front, reveal), sideText(model, fields.back)]
+                .filter(Boolean).join("\n"),
+        };
     }
 
     function renderPreviews() {
@@ -382,21 +409,25 @@
         var title = $("pack-title-input").value.trim() || $("pack-title-input").placeholder;
         state.inspect.models.forEach(function (model, index) {
             var fields = state.fields[index];
-            var complete = fields.front.length > 0 && fields.back.length > 0;
+            var cloze = model.kind === "cloze";
+            var complete = fieldsComplete(model, fields);
             $("model-" + index).setAttribute("data-incomplete", complete ? "false" : "true");
             if (complete) $("model-" + index).removeAttribute("data-flagged");
             $("need-" + index).textContent = complete ? "已选好" :
                 !fields.front.length && !fields.back.length ? "还没选字段" :
                 !fields.front.length ? "还差正面字段" : "还差背面字段";
-            var front = sideText(model, fields.front);
-            var back = sideText(model, fields.back);
+            var sides = cloze ? clozeSides(model, fields)
+                : { front: sideText(model, fields.front), back: sideText(model, fields.back) };
+            var front = sides.front;
+            var back = sides.back;
+            var hasBack = fields.back.length > 0 || (cloze && fields.front.length > 0);
             var emptyField = "（这个字段在第一条笔记里是空的）";
             $("screen-" + index).innerHTML =
                 "<div class='bar'><span>" + esc(title) + "</span><span>1 / 1</span></div>" +
                 (fields.front.length ? "<div class='front'>" + esc(front || emptyField) + "</div>"
                     : "<div class='front empty'>选一个正面字段，问题会显示在这里</div>") +
                 "<div class='divider'></div>" +
-                (fields.back.length ? "<div class='back'>" + esc(back || emptyField) + "</div>"
+                (hasBack ? "<div class='back'>" + esc(back || emptyField) + "</div>"
                     : "<div class='back empty'>选一个背面字段，答案会显示在这里</div>");
         });
     }
@@ -429,11 +460,16 @@
         return mapping;
     }
 
+    // A cloze card's back is its revealed text, so Back Extra is optional.
+    function fieldsComplete(model, fields) {
+        return fields.front.length > 0 && (fields.back.length > 0 || model.kind === "cloze");
+    }
+
     function incompleteModel() {
         if (!state.inspect) return null;
         for (var index = 0; index < state.inspect.models.length; index++) {
             var fields = state.fields[index] || {};
-            if (!fields.front.length || !fields.back.length) {
+            if (!fieldsComplete(state.inspect.models[index], fields)) {
                 return { name: state.inspect.models[index].name, index: index };
             }
         }
@@ -497,7 +533,7 @@
         var missing = incompleteModel();
         if (missing) {
             state.fields.forEach(function (fields, index) {
-                if (!fields.front.length || !fields.back.length) {
+                if (!fieldsComplete(state.inspect.models[index], fields)) {
                     $("model-" + index).setAttribute("data-flagged", "");
                 }
             });

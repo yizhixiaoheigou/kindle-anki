@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 from kindle_anki_importer import AnkiImportError, extract_media, import_apkg, inspect_apkg  # noqa: E402
-from kindle_apkg import NoImportableCardsError  # noqa: E402
+from kindle_apkg import NewFormatExportError, NoImportableCardsError  # noqa: E402
 from kindle_bundle import safe_stem, write_kindle_bundle  # noqa: E402
 from kindle_cards import KindlePackageError, load_package, save_package, validate_package  # noqa: E402
 
@@ -142,6 +142,40 @@ def _make_shapes_apkg(path: Path) -> None:
              (204, 102, 0), (205, 103, 0), (206, 104, 0), (207, 105, 0)]
     media = {"q.png": b"q-image", "a.png": b"a-image", "io.png": b"io-image", "w.mp3": b"audio"}
     _write_collection(path, models, notes, cards, media)
+
+
+def _make_new_format_apkg(path: Path) -> None:
+    """Like Anki's default export: the cards sit in collection.anki21b and
+    collection.anki2 holds only a placeholder note with an empty back."""
+
+    _write_collection(
+        path,
+        {"1": _model(1, "Basic", ["Front", "Back"])},
+        [(100, 1, "请更新至 Anki 的最新版本，然后再次导入 .colpkg/.apkg 文件。\x1f")],
+        [(200, 100, 0)],
+    )
+    with zipfile.ZipFile(path, "a") as archive:
+        archive.writestr("collection.anki21b", b"(\xb5/\xfd compressed collection")
+        archive.writestr("meta", b"\x08\x03")
+
+
+def _make_unrecognised_apkg(path: Path) -> None:
+    """Note types the importer cannot recognise, for back-field suggestions."""
+
+    _write_collection(
+        path,
+        {
+            "1": _model(1, "红宝书", ["单词", "音标", "解释", "Audio"]),
+            "2": _model(2, "Vocab", ["Word", "Notes", "Gloss", "Audio"]),
+            "3": _model(3, "Sounds", ["Word", "Audio"]),
+        },
+        [
+            (100, 1, "abandon\x1f[ə'bændən]\x1fv./n.放弃\x1f[sound:abandon.mp3]"),
+            (101, 2, "lush\x1f<br>\x1f茂盛的\x1f[sound:lush.mp3]"),
+            (102, 3, "word\x1f[sound:word.mp3]"),
+        ],
+        [(200, 100, 0), (201, 101, 0), (202, 102, 0)],
+    )
 
 
 class KindlePackTests(unittest.TestCase):
@@ -415,6 +449,31 @@ class KindlePackTests(unittest.TestCase):
         card = next(card for card in package["cards"] if card["source_card_id"] == 202)
         self.assertEqual(card["front"], "[...]")
         self.assertEqual(card["back"], "[Paris is in France]")
+
+    def test_new_format_export_is_named_not_read_as_a_placeholder(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-new-format-") as temp:
+            apkg = Path(temp) / "10.apkg"
+            _make_new_format_apkg(apkg)
+            with self.assertRaises(NewFormatExportError) as inspect_error:
+                inspect_apkg(apkg)
+            with self.assertRaises(NewFormatExportError):
+                import_apkg(apkg)
+        self.assertIn("Support older Anki versions", str(inspect_error.exception))
+
+    def test_unrecognised_note_types_suggest_a_back_with_text(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-suggest-") as temp:
+            apkg = Path(temp) / "vocab.apkg"
+            _make_unrecognised_apkg(apkg)
+            info = inspect_apkg(apkg)
+            mapping = {
+                str(model["id"]): {"front": model["suggested_front"], "back": model["suggested_back"]}
+                for model in info["models"]
+            }
+            package = import_apkg(apkg, field_mapping=mapping)
+        backs = {model["name"]: model["suggested_back"] for model in info["models"]}
+        # A field named like an answer, else the first one with text, else the last.
+        self.assertEqual(backs, {"红宝书": [2], "Vocab": [2], "Sounds": [1]})
+        self.assertEqual([card["back"] for card in package["cards"]], ["v./n.放弃", "茂盛的"])
 
     def test_all_image_occlusion_reports_why(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-io-") as temp:

@@ -40,7 +40,7 @@ ROOT = repo_root()
 sys.path.insert(0, str(ROOT / "tools"))
 
 from kindle_anki_importer import import_apkg, inspect_apkg  # noqa: E402
-from kindle_apkg import NoImportableCardsError  # noqa: E402
+from kindle_apkg import NewFormatExportError, NoImportableCardsError  # noqa: E402
 from kindle_bundle import write_kindle_bundle  # noqa: E402
 from kindle_pack_server import (  # noqa: E402
     PACK_PORT,
@@ -250,16 +250,16 @@ class ConverterApp(tk.Tk):
         )
         self.map_hint.configure(text="")
 
-    def _show_inspect_error(self, detail: str) -> None:
+    def _show_inspect_error(self, detail: str, title: str = "", body: str = "") -> None:
         for child in self.mapping_host.winfo_children():
             child.destroy()
         self._mapping_widgets = []
-        ttk.Label(self.mapping_host, text=COPY["inspect_fail_title"], style="Well.TLabel").pack(
+        ttk.Label(self.mapping_host, text=title or COPY["inspect_fail_title"], style="Well.TLabel").pack(
             anchor="w", padx=16, pady=(24, 4)
         )
-        ttk.Label(self.mapping_host, text=COPY["inspect_fail_body"], style="WellMute.TLabel", wraplength=640).pack(
-            anchor="w", padx=16
-        )
+        ttk.Label(
+            self.mapping_host, text=body or COPY["inspect_fail_body"], style="WellMute.TLabel", wraplength=640
+        ).pack(anchor="w", padx=16)
         if detail:
             ttk.Label(self.mapping_host, text=detail, style="WellMute.TLabel", wraplength=640).pack(
                 anchor="w", padx=16, pady=(8, 0)
@@ -452,8 +452,12 @@ class ConverterApp(tk.Tk):
         self.name_var.set("")
         self._last_traceback = tb
         self._set_convert_enabled(False)
-        self._show_inspect_error(str(exc))
-        self._set_status(COPY["inspect_fail_title"])
+        if isinstance(exc, NewFormatExportError):
+            self._show_inspect_error("", COPY["new_format_title"], COPY["new_format_body"])
+            self._set_status(COPY["new_format_title"])
+        else:
+            self._show_inspect_error(str(exc))
+            self._set_status(COPY["inspect_fail_title"])
 
     def pick_output(self) -> None:
         if self._busy or not self._alive:

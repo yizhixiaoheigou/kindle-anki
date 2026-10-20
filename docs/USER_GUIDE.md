@@ -36,12 +36,18 @@ Windows: the packaged `Kindle-Anki-Import` onedir if you have it, or
 
 In the window:
 
-1. Choose an Anki `.apkg`.
+1. Choose an Anki `.apkg`, exported with *Support older Anki versions*
+   checked. Without it, Anki's default export keeps the cards in a newer
+   format the converter cannot read; the window says so and how to
+   re-export.
 2. Type a **pack name** if you want one. It starts as the deck name read from
    the file; this name labels the pack on the Kindle and names the output
    files. Leave it as is and you get the deck name.
-3. Tick **front** and **back** fields. Leave the question unchecked on the back
-   if the flipped card should not repeat the front.
+3. Tick **front** and **back** fields. They start pre-ticked: a recognised
+   note type gets its usual fields, and for any other the back is a field
+   named like an answer (解释, 释义, Answer, Meaning…) or else the first field
+   with text. Leave the question unchecked on the back if the flipped card
+   should not repeat the front.
 4. Choose a save folder (Desktop is fine).
 5. Click **Convert**.
 
@@ -74,7 +80,7 @@ The converter never uploads your deck. It does not write API keys into the pack.
    runs inside the browser and card content stays on your device; the
    Kindle then shows "Imported …" and the pack is ready. It refuses, and
    marks the note type in red, until every note type has at least one front
-   and one back field. **只转换，下载 .zip** gives you the same pack as a file
+   and one back field (a Cloze note needs only the front). **只转换，下载 .zip** gives you the same pack as a file
    instead.
 
 What converts: Basic-style notes become short-answer cards, notes with
@@ -83,7 +89,9 @@ number (the hidden part shows as `[...]`, or `[hint]`, and the back shows
 it as `[answer]`). A side may be just an image. Audio is dropped, so a back
 that is only audio is skipped, and Anki's image occlusion notes are not
 supported. If nothing in the file can be converted, the page lists why each
-card was skipped and what to change.
+card was skipped and what to change. A file exported without *Support older
+Anki versions* is refused as soon as you pick it, with the steps to
+re-export.
 
 The **卡包** (Packs) tab lists what is already on the Kindle. **删除**
 (Delete) asks once more, then removes the pack together with its study

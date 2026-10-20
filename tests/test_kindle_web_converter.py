@@ -25,10 +25,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from test_kindle_cards import _cloze_model, _make_apkg, _make_shapes_apkg, _write_collection  # noqa: E402
+from test_kindle_cards import (  # noqa: E402
+    _cloze_model,
+    _make_apkg,
+    _make_new_format_apkg,
+    _make_shapes_apkg,
+    _make_unrecognised_apkg,
+    _write_collection,
+)
 
 from kindle_anki_importer import import_apkg, inspect_apkg  # noqa: E402
-from kindle_apkg import NoImportableCardsError  # noqa: E402
+from kindle_apkg import NewFormatExportError, NoImportableCardsError  # noqa: E402
 from kindle_bundle import write_kindle_bundle  # noqa: E402
 
 NODE = shutil.which("node")
@@ -374,6 +381,47 @@ class WebConverterConformance(unittest.TestCase):
             js_error["report"]["skipped_reasons"],
             {"empty_back": 1, "image_occlusion": 1, "non_primary_template": 1},
         )
+
+    def test_back_suggestions_match_python(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-web-suggest-") as temp:
+            apkg = Path(temp) / "vocab.apkg"
+            _make_unrecognised_apkg(apkg)
+            out = Path(temp) / "inspect.json"
+            _run_node(RUNNER, "--inspect", apkg, out)
+            self.assertEqual(json.loads(out.read_text(encoding="utf-8")), inspect_apkg(apkg))
+
+    def test_new_format_export_error_matches_python(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kindle-web-new-format-") as temp:
+            apkg = Path(temp) / "10.apkg"
+            _make_new_format_apkg(apkg)
+            result = subprocess.run(
+                [NODE, str(RUNNER), "--inspect", apkg, Path(temp) / "out.json"],
+                capture_output=True, text=True, timeout=60,
+            )
+            with self.assertRaises(NewFormatExportError) as ctx:
+                inspect_apkg(apkg)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(str(ctx.exception), result.stderr)
+
+    def test_new_format_export_rejects_the_promise(self) -> None:
+        """The page only sees errors through .catch; a synchronous throw left
+        it stuck on 正在读取…."""
+        script = (
+            "const c = require(process.argv[1]);"
+            "const bytes = require('fs').readFileSync(process.argv[2]);"
+            "let p;"
+            "try { p = c.inspectApkg(bytes, '10.apkg'); }"
+            "catch (e) { console.log('threw'); process.exit(0); }"
+            "p.then(() => console.log('resolved'), (e) => console.log('rejected ' + e.code));"
+        )
+        with tempfile.TemporaryDirectory(prefix="kindle-web-reject-promise-") as temp:
+            apkg = Path(temp) / "10.apkg"
+            _make_new_format_apkg(apkg)
+            result = subprocess.run(
+                [NODE, "-e", script, str(WEB_DIR / "convert.js"), str(apkg)],
+                capture_output=True, text=True, timeout=60, check=True,
+            )
+        self.assertEqual(result.stdout.strip(), "rejected new_format_export")
 
     def test_rejects_non_apkg_name(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kindle-web-reject-") as temp:

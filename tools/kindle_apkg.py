@@ -29,6 +29,10 @@ class NoImportableCardsError(AnkiImportError):
         self.report = report
 
 
+class NewFormatExportError(AnkiImportError):
+    """Raised for an .apkg exported without "Support older Anki versions"."""
+
+
 MAX_ZIP_ENTRY_BYTES = 512 * 1024 * 1024
 
 
@@ -157,17 +161,19 @@ def _read_collection(apkg_path: Path) -> tuple[sqlite3.Connection, tempfile.Temp
     temp_dir = tempfile.TemporaryDirectory(prefix="kindle-anki-")
     try:
         names = set(archive.namelist())
-        collection_name = next(
-            (name for name in ("collection.anki21", "collection.anki2") if name in names),
-            None,
-        )
-        if collection_name is None:
-            if "collection.anki21b" in names:
-                raise AnkiImportError(
-                    "cannot decompress collection.anki21b; "
-                    "export an .apkg compatible with collection.anki21. "
-                    + _LEGACY_EXPORT_HINT
-                )
+        # A new-format export keeps the real cards in the zstd-compressed
+        # collection.anki21b; its collection.anki2 is only a placeholder note
+        # asking to update Anki, so never fall back to it.
+        if "collection.anki21" in names:
+            collection_name = "collection.anki21"
+        elif "collection.anki21b" in names:
+            raise NewFormatExportError(
+                "this .apkg uses the newer Anki export format (collection.anki21b), "
+                "which the converter cannot read. " + _LEGACY_EXPORT_HINT
+            )
+        elif "collection.anki2" in names:
+            collection_name = "collection.anki2"
+        else:
             raise AnkiImportError(".apkg has no collection.anki21 or collection.anki2")
 
         collection_path = Path(temp_dir.name) / collection_name

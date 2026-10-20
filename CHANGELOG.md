@@ -4,6 +4,17 @@ Notable changes to Kindle Anki. Format follows Keep a Changelog.
 
 ## Unreleased
 
+- An `.apkg` exported without *Support older Anki versions* (Anki's default)
+  is now refused with re-export steps in Chinese. The converters used to
+  read the placeholder `collection.anki2` such exports carry and fail with
+  "no importable cards". A file with only `collection.anki21b` used to leave
+  the browser page stuck on 正在读取….
+- For a note type the converter does not recognise, the desktop converter
+  pre-ticks a back field named like an answer (解释, 释义, Answer…) or the
+  first one with text, instead of the last field, which is often Audio.
+- The browser page previews a Cloze note as its first card, shows an
+  image-only field as （图片）, says image occlusion notes will be skipped,
+  and no longer asks for a back field on Cloze notes.
 - The converters import Cloze notes: each cloze number becomes a card that
   hides that deletion as `[...]` (or its hint) and reveals it on the back,
   followed by Back Extra. **Type answer** checks a single-answer cloze.
